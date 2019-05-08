@@ -86,6 +86,8 @@ div.main-container {
 
 The background for this data is as follows:
 
+- dbGaP Accession: [phs000424](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v7.p2).
+- Part of [GTEx](https://gtexportal.org/home/).
 - Archived frozen adult human post-mortem tissue.
 - 19,550 nuclei, 1,683 genes, 2,187 transcripts.
 - 3 PFC samples, 4 hippocampus samples from 5 donors.
