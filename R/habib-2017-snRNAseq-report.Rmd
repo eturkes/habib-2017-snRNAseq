@@ -117,8 +117,9 @@ counts <- data.table::fread(
 rownames(counts) <- counts[["V1"]]
 counts <- as.matrix(counts[ , -1])
 part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
-col_dat <- data.frame(sample <- colnames(counts),
-  part_cell_id <- part_cell_id,
+col_dat <- data.frame(
+  sample = colnames(counts),
+  part_cell_id = part_cell_id,
   stringsAsFactors = FALSE
 )
 
@@ -139,4 +140,22 @@ ctype = c(
   "exPFC", "exPFC", "exCA1", "exCA3", "GABA", "GABA", "exDG", "ASC", "ASC", "ODC", "ODC", "OPC",
     "MG", "NSC", "END", rep(NA,4)
 )
+
+map_clust_name <- data.frame(
+  "Habib 2017 Clusters" = as.factor(seq(19)),
+  "Habib 2017 Cluster Name" = cname,
+  "Habib 2017 Cluster Type" = ctype
+)
+clust <- merge(clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
+clust <- clust[match(col_dat[[sample_name]], clust[[sample_name]]), ]
+
+df_tsne = data.table::fread(
+  cmd = sprintf("zcat < %s", file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.tsne.txt.gz")),
+  data.table = FALSE
+)
+
+names(df_tsne) = c("sample_name", paste0("Habib 2017 TSNE", 1:2))
+
+is_match <- (col_dat[[sample_name]] == df_tsne[[sample_name]]) &
+  (df_tsne[[sample_name]] == clust[[sample_name]]); table(is_match)
 ```
