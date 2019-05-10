@@ -104,3 +104,73 @@ The source code and instructions for rerunning the analysis can be found at [git
 The following sections breakdown the methods used to transform the contents in `Original Data` to those in `Final Results`.
 
 # Original Data
+
+# To Be Organized
+
+```{r}
+counts <- data.table::fread(
+    cmd = sprintf(
+        "zcat < %s",
+        file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.umi_counts.txt.gz")
+    ),
+    data.table = FALSE
+)
+rownames(counts) <- counts[["V1"]]
+counts <- as.matrix(counts[ , -1])
+part_cell_id <- sapply(colnames(counts),
+    function(xx) strsplit(xx, "_")[[1]][1],
+    USE.NAMES = FALSE
+)
+col_dat <- data.frame(sample <- colnames(counts),
+    part_cell_id <- part_cell_id,
+    stringsAsFactors = FALSE
+)
+
+clust <- data.table::fread(
+    cmd <- sprintf(
+        "zcat < %s", file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.clusters.txt.gz")
+    ),
+    data.table = FALSE
+)
+names(clust) <- c("Sample Name", "Habib 2017 Clusters")
+clust[["Habib 2017 Clusters"]] <- as.factor(clust[["Habib 2017 Clusters"]])
+
+all(col_dat[["Sample Name"]] == clust[["Sample Name"]])
+
+cname = c(
+    "exPFC1",
+    "exPFC2",
+    "exCA1",
+    "exCA3",
+    "GABA1",
+    "GABA2",
+    "exDG",
+    "ASC1",
+    "ASC2",
+    "ODC1",
+    "ODC2",
+    "OPC",
+    "MG",
+    "NSC",
+    "END",
+    rep(NA, 4)
+)
+ctype = c(
+    "exPFC",
+    "exPFC",
+    "exCA1",
+    "exCA3", 
+    "GABA",
+    "GABA",
+    "exDG",
+    "ASC",
+    "ASC",
+    "ODC",
+    "ODC",
+    "OPC",
+    "MG",
+    "NSC",
+    "END",
+    rep(NA,4)
+)
+```
