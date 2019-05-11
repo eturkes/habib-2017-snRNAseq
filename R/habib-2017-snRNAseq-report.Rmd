@@ -1,29 +1,28 @@
 ---
-title: "Habib 2017 snRNAseq Report"
+title:               "Habib 2017 snRNAseq Report"
 author:
-  - "Emir Turkes"
-  - "Columbia University"
-date: '`r strftime(Sys.time(), format = "%B %d, %Y")`'
-bibliography: "../habib-2017-snRNAseq.bib"
-link-citations: true
+  - name:            "Emir Turkes"
+  - name:            "Columbia University"
+date:                '`r strftime(Sys.time(), format = "%B %d, %Y")`'
+bibliography:        "../habib-2017-snRNAseq.bib"
+biblio-style:        apalike
+link-citations:      true
 output:
   html_document:
     number_sections: true
-    theme: lumen
-    toc: true
-    toc_depth: 2
+    theme:           lumen
+    toc:             true
+    toc_depth:       2
     toc_float:
-      collapsed: false
+      collapsed:     false
       smooth_scroll: false
-knit: (
-  function(inputFile, encoding) {
-    rmarkdown::render(
-      inputFile,
-      encoding = encoding,
-      output_file = "../results/habib-2017-snRNAseq-report.html"
-      )
-    }
-  )
+
+knit:
+  (function(inputFile, encoding) {rmarkdown::render(
+    inputFile,
+    encoding = encoding,
+    output_file = "../results/habib-2017-snRNAseq-report.html"
+  )})
 ---
 
 ```{r, include = FALSE}
@@ -45,7 +44,7 @@ knit: (
 #
 #    Emir Turkes can be contacted at emir.turkes@eturkes.com
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk[["set"]](echo = TRUE)
 ```
 
 <style type="text/css">
@@ -118,9 +117,7 @@ rownames(counts) <- counts[["V1"]]
 counts <- as.matrix(counts[ , -1])
 part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
 col_dat <- data.frame(
-  sample = colnames(counts),
-  part_cell_id = part_cell_id,
-  stringsAsFactors = FALSE
+  sample = colnames(counts), part_cell_id = part_cell_id, stringsAsFactors = FALSE
 )
 
 clust <- data.table::fread(
@@ -133,12 +130,12 @@ clust[["Habib 2017 Clusters"]] <- as.factor(clust[["Habib 2017 Clusters"]])
 all(col_dat[["Sample Name"]] == clust[["Sample Name"]])
 
 cname = c(
-  "exPFC1", "exPFC2", "exCA1", "exCA3", "GABA1", "GABA2", "exDG", "ASC1", "ASC2", "ODC1", "ODC2",
-    "OPC", "MG", "NSC", "END", rep(NA, 4)
+  "exPFC1", "exPFC2", "exCA1", "exCA3", "GABA1", "GABA2", "exDG",
+  "ASC1", "ASC2","ODC1", "ODC2", "OPC", "MG", "NSC", "END", rep(NA, 4)
 )
 ctype = c(
-  "exPFC", "exPFC", "exCA1", "exCA3", "GABA", "GABA", "exDG", "ASC", "ASC", "ODC", "ODC", "OPC",
-    "MG", "NSC", "END", rep(NA,4)
+  "exPFC", "exPFC", "exCA1", "exCA3", "GABA", "GABA", "exDG",
+  "ASC", "ASC", "ODC", "ODC", "OPC", "MG", "NSC", "END", rep(NA,4)
 )
 
 map_clust_name <- data.frame(
