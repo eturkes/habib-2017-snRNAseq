@@ -19,6 +19,6 @@
 -->
 
 # Habib 2017 snRNAseq Analysis
-#### *This analysis is currently incomplete*
+#### *This analysis is a work-in-progress*
 
 Analysis of Habib 2017 snRNAseq
