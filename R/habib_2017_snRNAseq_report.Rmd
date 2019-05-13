@@ -88,7 +88,7 @@ div.main-container {
 The background for this data is as follows:
 
 - dbGaP Accession: [phs000424](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v7.p2).
-- Part of [GTEx](https://gtexportal.org/home/).
+- Part of [GTEx](https://gtexportal.org/home/) and originally published in @habib_massively_2017.
 - Archived frozen adult human post-mortem tissue.
 - 19,550 nuclei, 1,683 genes, 2,187 transcripts.
 - 3 PFC samples, 4 hippocampus samples from 5 donors.
@@ -122,7 +122,9 @@ col_dat <- data.frame(
   stringsAsFactors = FALSE,
   check.names = FALSE
 )
+```
 
+```{r}
 clust <- data.table::fread(
   cmd = sprintf("zcat < %s", file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.clusters.txt.gz")),
   data.table = FALSE
@@ -146,7 +148,9 @@ map_clust_name <- data.frame(
 )
 clust <- merge(clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
 clust <- clust[match(col_dat$"Sample Name", clust$"Sample Name"), ]
+```
 
+```{r}
 df_tsne = data.table::fread(
   cmd = sprintf("zcat < %s", file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.tsne.txt.gz")),
   data.table = FALSE
@@ -158,4 +162,21 @@ col_dat <- cbind(
   df_tsne[ ,names(df_tsne) != "Sample Name"]
 )
 sce <- SingleCellExperiment::SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
+```
+
+```{r}
+if (file.exists("../results/gene_anno.rds")) {
+  gene_anno <- readRDS("../results/gene_anno.rds")
+} else {
+  ensembl <- biomaRt::useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
+  attr_string <- c(
+    "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name",
+    "chromosome_name", "start_position", "end_position", "strand",
+    "description", "percentage_gene_gc_content", "gene_biotype"
+  )
+  gene_anno <- biomaRt::getBM(
+    attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl
+  )
+  saveRDS(gene_anno, file = "../results/gene_anno.rds")
+}
 ```
