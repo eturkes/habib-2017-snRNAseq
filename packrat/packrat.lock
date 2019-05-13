@@ -232,10 +232,22 @@ Source: CRAN
 Version: 0.6.18
 Hash: 65f62365ec69ddd17230d2ffe891a6ab
 
+Package: dplyr
+Source: CRAN
+Version: 0.8.0.1
+Hash: 61622995e32970a772e895bec2b4a305
+Requires: BH, R6, Rcpp, assertthat, glue, magrittr, pkgconfig, plogr,
+    rlang, tibble, tidyselect
+
 Package: evaluate
 Source: CRAN
 Version: 0.13
 Hash: 1853557a0ea0db2daebf597c7ce58d70
+
+Package: fansi
+Source: CRAN
+Version: 0.4.0
+Hash: f147621f72b561485bfffcae78c4f5d5
 
 Package: formatR
 Source: CRAN
@@ -358,6 +370,12 @@ Source: CRAN
 Version: 0.5.0
 Hash: 498643e765d1442ba7b1160a1df3abf9
 
+Package: pillar
+Source: CRAN
+Version: 1.4.0
+Hash: 1bca62875e57d03cd7b8d15bd1613fc9
+Requires: cli, crayon, fansi, rlang, utf8, vctrs
+
 Package: pkgbuild
 Source: CRAN
 Version: 1.0.3
@@ -471,6 +489,18 @@ Source: CRAN
 Version: 3.2
 Hash: aaa3f56d4255306a32ea30df8ef63901
 
+Package: tibble
+Source: CRAN
+Version: 2.1.1
+Hash: e9d844f966bd4d40556b50c3b2239646
+Requires: cli, crayon, fansi, pillar, pkgconfig, rlang
+
+Package: tidyselect
+Source: CRAN
+Version: 0.2.5
+Hash: ce32c88efe672d565819caa17238b04c
+Requires: Rcpp, glue, purrr, rlang
+
 Package: tinytex
 Source: CRAN
 Version: 0.12
@@ -483,6 +513,17 @@ Version: 1.5.0
 Hash: 56dfac7b823f31dede3b13a256d4e6f1
 Requires: clipr, clisymbols, crayon, curl, desc, fs, gh, git2r, glue,
     purrr, rlang, rprojroot, rstudioapi, whisker, withr, yaml
+
+Package: utf8
+Source: CRAN
+Version: 1.1.4
+Hash: f3f97ce59092abc8ed3fd098a59e236c
+
+Package: vctrs
+Source: CRAN
+Version: 0.1.0
+Hash: a03152baad7a9b92950b29f528dae6a7
+Requires: backports, digest, glue, rlang, zeallot
 
 Package: whisker
 Source: CRAN
@@ -509,6 +550,11 @@ Package: yaml
 Source: CRAN
 Version: 2.2.0
 Hash: a5ad5616d83d89f8d84cbf3cf4034e13
+
+Package: zeallot
+Source: CRAN
+Version: 0.1.0
+Hash: 10b2ed48e202b4db421ae864041dc4b2
 
 Package: zlibbioc
 Source: Bioconductor

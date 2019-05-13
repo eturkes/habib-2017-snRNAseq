@@ -186,6 +186,22 @@ remove_genes <- which(!gene_anno$external_gene_name %in% rownames(sce))
 gene_anno <- gene_anno[-remove_genes, ]
 ```
 
+```{r}
+chromosomes <- c(1:22, "X", "Y", "MT")
+gene_anno <- gene_anno[which(gene_anno$chromosome_name %in% chromosomes), ]
+t1 <- table(gene_anno$external_gene_name)
+t2 <- sort(t1[t1 > 1], decreasing = TRUE)
+duplicates <- which(gene_anno$external_gene_name %in% names(t2))
+gene_anno2 <- gene_anno[duplicates, ]
+gene_anno2 <- gene_anno2[which(gene_anno2$hgnc_symbol == gene_anno2$external_gene_name), ]
+gene_anno2 <- dplyr::distinct(gene_anno2, external_gene_name, .keep_all = TRUE)
+gene_anno <- rbind(gene_anno[-duplicates, ], gene_anno2)
+gene_missing <- setdiff(rownames(sce), gene_anno$external_gene_name)
+keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
+sce <- sce[keep_genes, ]
+SummarizedExperiment::rowData(sce) <- gene_anno
+```
+
 # Conclusion
 
 This concludes the methods used in this analysis.
