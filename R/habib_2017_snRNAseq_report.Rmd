@@ -180,3 +180,14 @@ if (file.exists("../results/gene_anno.rds")) {
   saveRDS(gene_anno, file = "../results/gene_anno.rds")
 }
 ```
+
+# Conclusion
+
+This concludes the methods used in this analysis.
+Below we simply write the data to disk for exploration in `Final Results` at the top of this report.
+
+```{r}
+devtools::session_info()
+```
+
+# References
