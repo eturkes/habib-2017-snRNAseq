@@ -181,6 +181,11 @@ if (file.exists("../results/gene_anno.rds")) {
 }
 ```
 
+```{r}
+remove_genes <- which(!gene_anno$external_gene_name %in% rownames(sce))
+gene_anno <- gene_anno[-remove_genes, ]
+```
+
 # Conclusion
 
 This concludes the methods used in this analysis.
