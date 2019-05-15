@@ -45,6 +45,8 @@ knit:
 #    Emir Turkes can be contacted at emir.turkes@eturkes.com
 
 knitr::opts_chunk$set(echo = TRUE)
+
+library(BiocGenerics)
 ```
 
 <style type="text/css">
@@ -200,6 +202,34 @@ gene_missing <- setdiff(rownames(sce), gene_anno$external_gene_name)
 keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
 sce <- sce[keep_genes, ]
 SummarizedExperiment::rowData(sce) <- gene_anno
+```
+
+```{r}
+bc_rank <- DropletUtils::barcodeRanks(counts(sce))
+uniq <- !duplicated(bc_rank$rank)
+plot(
+  bc_rank$rank[uniq],
+  bc_rank$total[uniq],
+  log = "xy",
+  xlab = "Rank",
+  ylab = "Total UMI count",
+  cex = 0.5,
+  cex.lab = 1.2
+)
+abline(h = bc_rank$inflection, col = "darkgreen", lty = 2, lwd = 2)
+abline(h = bc_rank$knee, col = "dodgerblue", lty = 2,lwd = 2)
+legend(
+  "left",
+  legend = c("Inflection", "Knee"),
+  bty = "n",
+  col = c("darkgreen", "dodgerblue"),
+  lty = 2,
+  cex = 1.2,
+  lwd = 2
+)
+set.seed(100)
+e_out <- DropletUtils::emptyDrops(counts(sce))
+tapply(e_out$Total, e_out$FDR, summary)
 ```
 
 # Conclusion
