@@ -262,6 +262,15 @@ smoothScatter(
 )
 ```
 
+```{r}
+libsize_drop <- scater::isOutlier(sce$total_counts, nmads = 3, type = "lower", log = TRUE)
+feature_drop <- scater::isOutlier(sce$total_features_by_counts, nmads = 3, type = "lower", log = TRUE)
+mito_drop <- scater::isOutlier(sce$pct_counts_Mt, nmads = 3, type = "higher")
+ribo_drop <- scater::isOutlier(sce$pct_counts_Ri, nmads = 3, type = "higher")
+keep <- !(libsize_drop | feature_drop | mito_drop | ribo_drop)
+sce <- sce[ , keep]
+```
+
 # Conclusion
 
 This concludes the methods used in this analysis.
