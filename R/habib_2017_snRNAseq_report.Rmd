@@ -330,6 +330,23 @@ sce <- sce[ , which(BiocGenerics::sizeFactors(sce) > 0.05)]
 sce <- BiocGenerics::normalize(sce)
 ```
 
+```{r}
+new_trend <- scran::makeTechTrend(x = sce)
+fit <- scran::trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
+par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
+plot(fit$mean, fit$var, pch = 20, col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "log(mean)", ylab = "var")
+curve(fit$trend(x), col = "orange", lwd = 2, add = TRUE)
+curve(new_trend(x), col = "red", lwd = 2, add = TRUE)
+legend(
+  "top", legend = c("Poisson noise", "observed trend"), lty = 1,
+  lwd=2, col = c("red", "orange"), bty = "n"
+)
+fit$trend <- new_trend
+dec <- scran::decomposeVar(fit = fit)
+top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
+scater::plotExpression(sce, features = rownames(top_dec)[1:10])
+```
+
 # Conclusion
 
 This concludes the methods used in this analysis.
