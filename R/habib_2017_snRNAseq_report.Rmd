@@ -289,6 +289,15 @@ plot(
 )
 tb1 <- table(SummarizedExperiment::rowData(sce)$n_cells_counts)
 ```
+```{r}
+names(SummarizedExperiment::rowData(sce))[
+  names(SummarizedExperiment::rowData(sce)) == "strand"
+] <- "strand_n"
+n_genes <- colSums(BiocGenerics::counts(sce) >= 2)
+n_genes <- colSums(BiocGenerics::counts(sce) >= 1)
+n_cells <- rowSums(BiocGenerics::counts(sce) >= 2)
+sce <- sce[which(n_cells >= 10), ]
+```
 
 # Conclusion
 
