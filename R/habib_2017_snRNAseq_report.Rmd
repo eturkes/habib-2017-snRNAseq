@@ -312,6 +312,23 @@ barplot(
   xlab = "ave # of UMI"
 )
 ```
+```{r}
+clusters <- scran::quickCluster(sce, min.mean = 0.1, method = "igraph")
+sce <- scran::computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
+sce <- sce[ , which(BiocGenerics::sizeFactors(sce) > 0.01)]
+par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
+smoothScatter(
+  sce$total_counts, BiocGenerics::sizeFactors(sce), log = "xy",
+  xlab = "total counts", ylab = "size factors"
+)
+plot(
+  sce$total_counts, BiocGenerics::sizeFactors(sce), log = "xy", xlab = "total counts",
+  ylab = "size factors", cex = 0.3, pch = 20, col = rgb(0.1, 0.2, 0.7, 0.3)
+)
+abline(h = 0.05)
+sce <- sce[ , which(BiocGenerics::sizeFactors(sce) > 0.05)]
+sce <- BiocGenerics::normalize(sce)
+```
 
 # Conclusion
 
