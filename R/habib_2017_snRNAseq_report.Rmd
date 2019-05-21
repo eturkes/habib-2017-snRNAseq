@@ -346,6 +346,83 @@ dec <- scran::decomposeVar(fit = fit)
 top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
 scater::plotExpression(sce, features = rownames(top_dec)[1:10])
 ```
+```{r}
+ggplot_custom = function(DATA, X, Y, COL, TYPE) {
+	gg <- ggplot2::ggplot(DATA, ggplot2::aes_string(x = X, y = Y)) +
+		ggplot2::geom_point(size = 0.2, alpha = 0.6, ggplot2::aes_string(col = COL)) +
+		ggplot2::theme_classic() + ggplot2::theme(legend.position = "bottom")
+	if(TYPE == "cont") {
+		gg <- gg + ggplot2::scale_colour_gradient(low = "blue", high = "red")
+	} else if (TYPE == "cat") {
+		gg <- gg + ggplot2::guides(color = ggplot2::guide_legend(
+			override.aes = list(size = 3)))
+	}
+	gg
+}
+sce <- scran::denoisePCA(sce, technical = new_trend, approx = TRUE)
+par(mfrow = c(1, 1))
+plot(
+  log10(attr(SingleCellExperiment::reducedDim(sce), "percentVar")), xlab = "PC",
+  ylab = "log10(Prop of variance explained)", pch = 20,
+  cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5)
+)
+abline(v = ncol(SingleCellExperiment::reducedDim(sce,"PCA")), lty = 2, col = "red")
+df_redDim <- data.frame(
+  SummarizedExperiment::colData(sce)[ , c(
+    "sample_name", "part_cell_id", paste0("Habib_TSNE", 1:2), "log10_total_features",
+    "Habib_clusters", "Habib_clusters_name", "Habib_cell_type"
+  )],
+  SingleCellExperiment::reducedDim(sce, "PCA")[ , 1:2],
+  stringsAsFactors = FALSE
+)
+rownames(df_redDim) <- NULL
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "part_cell_id", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "log10_total_features", TYPE = "cont"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "Habib_clusters", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "Habib_clusters_name", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "Habib_cell_type", TYPE = "cat"
+)
+sce <- scater::runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
+tmp_df <- data.frame(SingleCellExperiment::reducedDim(sce, "TSNE"), stringsAsFactors = FALSE)
+rownames(tmp_df) <- NULL
+names(tmp_df) <- paste0("my_TSNE", 1:2)
+df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
+rm(tmp_df)
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "part_cell_id", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "log10_total_features", TYPE = "cont"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "Habib_clusters", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "Habib_clusters_name", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "Habib_cell_type", TYPE = "cat"
+)
+```
 
 # Conclusion
 
