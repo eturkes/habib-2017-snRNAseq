@@ -47,8 +47,6 @@ knit:
 #    Emir Turkes can be contacted at emir.turkes@eturkes.com
 
 knitr::opts_chunk$set(echo = TRUE)
-
-library(BiocGenerics)
 ```
 
 <style type="text/css">
@@ -91,29 +89,35 @@ The following sections breakdown the methods used to transform the contents in `
 # To Be Organized
 
 ```{r}
-knitr::opts_chunk$set(echo = TRUE)
-
-library(BiocGenerics)
-
 counts <- data.table::fread(
   cmd = sprintf("zcat < %s", file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.umi_counts.txt.gz")),
   data.table = FALSE
 )
 rownames(counts) <- counts$V1
-#counts <- as.matrix(counts[ , -1])
+counts <- as.matrix(counts[ , -1])
+
+keep <- grep("*PFC*", colnames(counts))
+counts <- counts[ , keep]
+
 part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
 col_dat <- data.frame(
-  sample = colnames(counts),
+  sample_name = colnames(counts),
   part_cell_id = part_cell_id,
   stringsAsFactors = FALSE,
   check.names = FALSE
 )
+```
+
+```{r}
 clust <- data.table::fread(
   cmd = sprintf("zcat < %s", file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.clusters.txt.gz")),
   data.table = FALSE
 )
-names(clust) <- c("sample", "clusters")
-clust$"clusters" <- as.factor(clust$"clusters")
+names(clust) <- c("sample_name", "Habib_clusters")
+
+clust <- clust[keep, ]
+
+clust$Habib_clusters <- as.factor(clust$Habib_clusters)
 cname = c(
   "exPFC1", "exPFC2", "exCA1", "exCA3", "GABA1", "GABA2", "exDG",
   "ASC1", "ASC2","ODC1", "ODC2", "OPC", "MG", "NSC", "END", rep(NA, 4)
@@ -123,62 +127,14 @@ ctype = c(
   "ASC", "ASC", "ODC", "ODC", "OPC", "MG", "NSC", "END", rep(NA,4)
 )
 map_clust_name <- data.frame(
-  "clusters" = as.factor(seq(19)),
-  "cell_type" = cname,
-  "cell_type2" = ctype,
+  Habib_clusters = as.factor(seq(19)),
+  Habib_clusters_name = cname,
+  Habib_cell_type = ctype,
   stringsAsFactors = FALSE,
   check.names = FALSE
 )
 clust <- merge(clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
-clust <- clust[match(col_dat$"sample", clust$"sample"), ]
-
-clust <- clust[-1, ]
-clust <- clust[ , -1]
-clust <- clust[ , -2]
-rownames(clust) <- clust[ , 1]
-clust[is.na(clust)] <- "Unknown"
-counts <- counts[ , -1]
-#keep <- grep("*humanPFCab*", names(counts), value = TRUE) # No idea why I need a "b" in there.
-# keep <- grep("*exPFC*", names(clust), value = TRUE)
-clust2 <- dplyr::filter(clust, cell_type2 %in% c("exPFC"))
-keep <- clust2$sample
-counts <- counts[ , keep]
-clust <- clust[keep, ]
-
-gene_anno <- readRDS("../results/gene_anno.rds")
-gene_keep <- row.names(counts)
-gene_anno <- gene_anno[!is.na(gene_anno$hgnc_symbol), ]
-gene_anno <- gene_anno[!duplicated(gene_anno$hgnc_symbol), ]
-gene_anno <- gene_anno[-1, ]
-
-rownames(gene_anno) <- gene_anno[ , 1]
-
-gene_anno <- gene_anno[gene_keep, ]
-
-#counts2 <- cbind(gene_anno2$ensembl_gene_id, counts)
-#data.table::setDT(counts2, keep.rownames = TRUE)[]
-#counts3 <- counts2[c(2, 1)]
-
-counts <- cbind(gene_anno$ensembl_gene_id, counts)
-counts <- data.table::setDT(counts, keep.rownames = TRUE)[]
-tmp <- counts[ , 1]
-counts[ , 1] <- counts[ , 2]
-counts[ , 2] <- tmp
-
-write.table(
-  counts,
-  file = "../data/GTEx_droncseq_hip_pcf.umi_counts-exPFC.txt",
-  quote=FALSE, sep=" ", col.names=FALSE, row.names=FALSE
-)
-write.table(
-  clust,
-  file = "../data/GTEx_droncseq_hip_pcf.clusters-exPFC.txt",
-  quote=FALSE, sep="\t", col.names=TRUE, row.names=FALSE
-)
-```
-
-```{r}
-pbmc.data <- Read10X(data.dir = "../data/pbmc3k/filtered_gene_bc_matrices/hg19/")
+clust <- clust[match(col_dat$sample_name, clust$sample_name), ]
 ```
 
 ```{r}
@@ -186,13 +142,16 @@ df_tsne = data.table::fread(
   cmd = sprintf("zcat < %s", file.path(getwd(), "../data/GTEx_droncseq_hip_pcf.tsne.txt.gz")),
   data.table = FALSE
 )
-names(df_tsne) = c("Sample Name", paste0("Habib t-SNE", 1:2))
+names(df_tsne) = c("sample_name", paste0("Habib_TSNE", 1:2))
+
+df_tsne <- df_tsne[keep, ]
+
 col_dat <- cbind(
   col_dat,
-  clust[ , names(clust) != "Sample Name"],
-  df_tsne[ ,names(df_tsne) != "Sample Name"]
+  clust[ , names(clust) != "sample_name"],
+  df_tsne[ , names(df_tsne) != "sample_name"]
 )
-#sce <- SingleCellExperiment::SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
+sce <- SingleCellExperiment::SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
 ```
 
 ```{r}
@@ -234,33 +193,73 @@ SummarizedExperiment::rowData(sce) <- gene_anno
 ```
 
 ```{r}
+bc_rank <- DropletUtils::barcodeRanks(BiocGenerics::counts(sce))
+uniq <- !duplicated(bc_rank$rank)
+par(mar = c(5, 4, 2, 1), bty = "n")
+plot(
+  bc_rank$rank[uniq],
+  bc_rank$total[uniq],
+  log = "xy",
+  xlab = "Rank",
+  ylab = "Total UMI count",
+  cex = 0.5,
+  cex.lab = 1.2
+)
+abline(h = bc_rank$inflection, col = "darkgreen", lty = 2, lwd = 2)
+abline(h = bc_rank$knee, col = "dodgerblue", lty = 2, lwd = 2)
+legend(
+  "left",
+  legend = c("Inflection", "Knee"),
+  bty = "n",
+  col = c("darkgreen", "dodgerblue"),
+  lty = 2,
+  cex = 1.2,
+  lwd = 2
+)
+```
 
-
-# bc_rank <- DropletUtils::barcodeRanks(counts(sce))
-# uniq <- !duplicated(bc_rank$rank)
-# plot(
-#   bc_rank$rank[uniq],
-#   bc_rank$total[uniq],
-#   log = "xy",
-#   xlab = "Rank",
-#   ylab = "Total UMI count",
-#   cex = 0.5,
-#   cex.lab = 1.2
-# )
-# abline(h = bc_rank$inflection, col = "darkgreen", lty = 2, lwd = 2)
-# abline(h = bc_rank$knee, col = "dodgerblue", lty = 2,lwd = 2)
-# legend(
-#   "left",
-#   legend = c("Inflection", "Knee"),
-#   bty = "n",
-#   col = c("darkgreen", "dodgerblue"),
-#   lty = 2,
-#   cex = 1.2,
-#   lwd = 2
-# )
-# set.seed(100)
-# e_out <- DropletUtils::emptyDrops(counts(sce))
-# tapply(e_out$Total, e_out$FDR, summary)
+```{r}
+ribo_genes <- read.table(
+  "../results/ribo-genes.txt", sep = "\t", header = TRUE, stringsAsFactors = FALSE
+)
+is_mito <- which(SummarizedExperiment::rowData(sce)$chromosome_name == "MT")
+is_ribo <- which(
+  SummarizedExperiment::rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol
+)
+sce <- scater::calculateQCMetrics(sce, feature_controls = list(Mt = is_mito, Ri = is_ribo))
+par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
+hist(
+  log10(sce$total_counts), xlab = "log10(Library sizes)", main = "", 
+  breaks = 20, col = "grey80", ylab = "Number of cells"
+)
+hist(
+  log10(sce$total_features), xlab = "log10(# of expressed genes)", main = "",
+  breaks = 20, col = "grey80", ylab = "Number of cells"
+)
+hist(
+  sce$pct_counts_Ri, xlab = "Ribosome prop. (%)", ylab = "Number of cells",
+  breaks = 40, main = "", col = "grey80"
+)
+hist(
+  sce$pct_counts_Mt, xlab = "Mitochondrial prop. (%)", ylab = "Number of cells",
+  breaks = 80, main = "", col = "grey80"
+)
+par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
+smoothScatter(
+  log10(sce$total_counts), log10(sce$total_features),
+  xlab = "log10(Library sizes)", ylab = "log10(# of expressed genes)"
+)
+smoothScatter(
+  log10(sce$total_counts), sce$pct_counts_Ri,
+  xlab = "log10(Library sizes)", ylab = "Ribosome prop. (%)"
+)
+smoothScatter(
+  log10(sce$total_counts), sce$pct_counts_Mt,
+  xlab = "log10(Library sizes)", ylab = "Mitochondrial prop. (%)"
+)
+smoothScatter(
+  sce$pct_counts_Ri,sce$pct_counts_Mt, xlab = "Ribosome prop. (%)", ylab = "Mitochondrial prop. (%)"
+)
 ```
 
 # Conclusion
