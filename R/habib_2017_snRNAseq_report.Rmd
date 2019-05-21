@@ -299,6 +299,20 @@ n_cells <- rowSums(BiocGenerics::counts(sce) >= 2)
 sce <- sce[which(n_cells >= 10), ]
 ```
 
+```{r}
+par(mar = c(5, 4, 1, 1))
+od1 <- order(SummarizedExperiment::rowData(sce)$mean_counts, decreasing = TRUE)
+barplot(
+  SummarizedExperiment::rowData(sce)$mean_counts[od1[20:1]],
+  las = 1,
+  names.arg = SummarizedExperiment::rowData(sce)$hgnc_symbol[od1[20:1]],
+  horiz = TRUE,
+  cex.names = 0.8,
+  cex.axis = 0.8,
+  xlab = "ave # of UMI"
+)
+```
+
 # Conclusion
 
 This concludes the methods used in this analysis.
