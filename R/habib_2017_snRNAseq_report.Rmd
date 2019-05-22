@@ -424,6 +424,61 @@ ggplot_custom(
 )
 ```
 
+```{r}
+dec1 <- dec
+dec1$bio[which(dec$bio < 1e-5)] <- 1e-5
+dec1$FDR[which(dec$FDR < 1e-100)] <- 1e-100
+par(mfrow = c(1, 2))
+hist(log10(dec1$bio), breaks = 100, main = "")
+hist(log10(dec1$FDR), breaks = 100, main = "")
+w2kp <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
+sce_hvg <- sce[w2kp, ]
+edat <- t(as.matrix(SingleCellExperiment::logcounts(sce_hvg)))
+edat <- scale(edat)
+```
+
+```{r}
+ppk <- svd::propack.svd(edat, neig = 50)
+pca <- t(ppk$d*t(ppk$u))
+tmp_df <- data.frame(pca[ , 1:2], stringsAsFactors = FALSE)
+names(tmp_df) <- paste0("HVG_PC", seq(ncol(tmp_df)))
+df_hvg <- data.frame(
+  SummarizedExperiment::colData(sce)[, c(
+    "sample_name", "part_cell_id", paste0("Habib_TSNE",1:2), "log10_total_features",
+    "Habib_clusters", "Habib_clusters_name", "Habib_cell_type"
+  )],
+  tmp_df,
+  stringsAsFactors = FALSE
+)
+rownames(df_hvg) <- NULL
+set.seed(100)
+tsne <- Rtsne::Rtsne(pca, pca = FALSE)
+tmp_df <- data.frame(tsne$Y, stringsAsFactors = FALSE)
+names(tmp_df) = paste0("HVG_TSNE",seq(ncol(tmp_df)))
+df_hvg = data.frame(df_hvg, tmp_df, stringsAsFactors = FALSE)
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "part_cell_id", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "log10_total_features", TYPE = "cont"
+)
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "Habib_clusters", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "Habib_clusters_name", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "Habib_cell_type", TYPE = "cat"
+)
+SingleCellExperiment::reducedDims(sce_hvg) <- S4Vectors::SimpleList(PCA = pca, TSNE = tsne$Y)
+```
+
 # Conclusion
 
 This concludes the methods used in this analysis.
