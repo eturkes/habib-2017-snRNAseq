@@ -96,8 +96,9 @@ counts <- data.table::fread(
 rownames(counts) <- counts$V1
 counts <- as.matrix(counts[ , -1])
 
-keep <- grep("*PFC*", colnames(counts))
-counts <- counts[ , keep]
+# For subsetting regions.
+# keep <- grep("*PFC*", colnames(counts))
+# counts <- counts[ , keep]
 
 part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
 col_dat <- data.frame(
@@ -115,7 +116,8 @@ clust <- data.table::fread(
 )
 names(clust) <- c("sample_name", "Habib_clusters")
 
-clust <- clust[keep, ]
+# For subsetting regions.
+# clust <- clust[keep, ]
 
 clust$Habib_clusters <- as.factor(clust$Habib_clusters)
 cname = c(
@@ -144,7 +146,8 @@ df_tsne = data.table::fread(
 )
 names(df_tsne) = c("sample_name", paste0("Habib_TSNE", 1:2))
 
-df_tsne <- df_tsne[keep, ]
+# For subsetting regions.
+# df_tsne <- df_tsne[keep, ]
 
 col_dat <- cbind(
   col_dat,
@@ -312,6 +315,7 @@ barplot(
   xlab = "ave # of UMI"
 )
 ```
+
 ```{r}
 clusters <- scran::quickCluster(sce, min.mean = 0.1, method = "igraph")
 sce <- scran::computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
@@ -344,21 +348,8 @@ legend(
 fit$trend <- new_trend
 dec <- scran::decomposeVar(fit = fit)
 top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
-
-# w2kp <- which(
-#   rownames(sce) == "SST" | rownames(sce) == "CALB1" | rownames(sce) == "CAMK2A" |
-#   rownames(sce) == "SLC2A1" | rownames(sce) == "SATB2" | rownames(sce) == "GRIA1" |
-#   rownames(sce) == "GRIA2" | rownames(sce) == "WFS1" | rownames(sce) == "TBR1"
-# )
-
-# top_dec2 <- dec@rownames == "SST" | dec@rownames == "CALB1" | dec@rownames == "CAMK2A" |
-#             dec@rownames == "SLC2A1" | dec@rownames == "SATB2" | dec@rownames == "GRIA1" |
-#             dec@rownames == "GRIA2" | dec@rownames == "WFS1" | dec@rownames == "TBR1"
-# top_dec <- dec[top_dec2, ]
-
-scater::plotExpression(sce, features = rownames(top_dec)[1:9])
+scater::plotExpression(sce, features = rownames(top_dec)[1:10])
 ```
-
 ```{r}
 ggplot_custom = function(DATA, X, Y, COL, TYPE) {
 	gg <- ggplot2::ggplot(DATA, ggplot2::aes_string(x = X, y = Y)) +
@@ -389,53 +380,52 @@ df_redDim <- data.frame(
   stringsAsFactors = FALSE
 )
 rownames(df_redDim) <- NULL
-# ggplot_custom(
-#   DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
-#   COL = "part_cell_id", TYPE = "cat"
-# )
-# ggplot_custom(
-#   DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
-#   COL = "log10_total_features", TYPE = "cont"
-# )
-# ggplot_custom(
-#   DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
-#   COL = "Habib_clusters", TYPE = "cat"
-# )
-# ggplot_custom(
-#   DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
-#   COL = "Habib_clusters_name", TYPE = "cat"
-# )
-# ggplot_custom(
-#   DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
-#   COL = "Habib_cell_type", TYPE = "cat"
-# )
-# sce <- scater::runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
-sce <- scater::runTSNE(sce, pca = TRUE, initial_dims = 2, perplexity = 30, rand_seed = 100)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "part_cell_id", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "log10_total_features", TYPE = "cont"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "Habib_clusters", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "Habib_clusters_name", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "Habib_TSNE1", Y = "Habib_TSNE2",
+  COL = "Habib_cell_type", TYPE = "cat"
+)
+sce <- scater::runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
 tmp_df <- data.frame(SingleCellExperiment::reducedDim(sce, "TSNE"), stringsAsFactors = FALSE)
 rownames(tmp_df) <- NULL
 names(tmp_df) <- paste0("my_TSNE", 1:2)
 df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
 rm(tmp_df)
-# ggplot_custom(
-#   DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
-#   COL = "part_cell_id", TYPE = "cat"
-# )
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "part_cell_id", TYPE = "cat"
+)
 ggplot_custom(
   DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
   COL = "log10_total_features", TYPE = "cont"
 )
-# ggplot_custom(
-#   DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
-#   COL = "Habib_clusters", TYPE = "cat"
-# )
-# ggplot_custom(
-#   DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
-#   COL = "Habib_clusters_name", TYPE = "cat"
-# )
-# ggplot_custom(
-#   DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
-#   COL = "Habib_cell_type", TYPE = "cat"
-# )
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "Habib_clusters", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "Habib_clusters_name", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_redDim, X = "my_TSNE1", Y = "my_TSNE2",
+  COL = "Habib_cell_type", TYPE = "cat"
+)
 ```
 
 ```{r}
@@ -446,20 +436,13 @@ par(mfrow = c(1, 2))
 hist(log10(dec1$bio), breaks = 100, main = "")
 hist(log10(dec1$FDR), breaks = 100, main = "")
 w2kp <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
-
-# w2kp <- which(
-#   rownames(sce) == "SST" | rownames(sce) == "CALB1" | rownames(sce) == "CAMK2A" |
-#   rownames(sce) == "SLC2A1" | rownames(sce) == "SATB2" | rownames(sce) == "GRIA1" |
-#   rownames(sce) == "GRIA2" | rownames(sce) == "WFS1" | rownames(sce) == "TBR1"
-# )
-
 sce_hvg <- sce[w2kp, ]
 edat <- t(as.matrix(SingleCellExperiment::logcounts(sce_hvg)))
 edat <- scale(edat)
 ```
 
 ```{r}
-ppk <- svd::propack.svd(edat, neig = 2)
+ppk <- svd::propack.svd(edat, neig = 50)
 pca <- t(ppk$d*t(ppk$u))
 tmp_df <- data.frame(pca[ , 1:2], stringsAsFactors = FALSE)
 names(tmp_df) <- paste0("HVG_PC", seq(ncol(tmp_df)))
@@ -473,126 +456,31 @@ df_hvg <- data.frame(
 )
 rownames(df_hvg) <- NULL
 set.seed(100)
-tsne <- Rtsne::Rtsne(pca, pca = FALSE, check_duplicates = FALSE, perplexity = 50)
+tsne <- Rtsne::Rtsne(pca, pca = FALSE)
 tmp_df <- data.frame(tsne$Y, stringsAsFactors = FALSE)
 names(tmp_df) = paste0("HVG_TSNE",seq(ncol(tmp_df)))
 df_hvg = data.frame(df_hvg, tmp_df, stringsAsFactors = FALSE)
-# ggplot_custom(
-#   DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
-#   COL = "part_cell_id", TYPE = "cat"
-# )
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "part_cell_id", TYPE = "cat"
+)
 ggplot_custom(
   DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
   COL = "log10_total_features", TYPE = "cont"
 )
-# ggplot_custom(
-#   DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
-#   COL = "Habib_clusters", TYPE = "cat"
-# )
-# ggplot_custom(
-#   DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
-#   COL = "Habib_clusters_name", TYPE = "cat"
-# )
-# ggplot_custom(
-#   DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
-#   COL = "Habib_cell_type", TYPE = "cat"
-# )
-# SingleCellExperiment::reducedDims(sce_hvg) <- S4Vectors::SimpleList(PCA = pca, TSNE = tsne$Y)
-```
-
-```{r}
-all_num_clust <- c(1:2)
-df_hvg <- df_hvg[ , !grepl("^KM_", names(df_hvg))]
-for(num_clust in all_num_clust) {
-  cat(paste0("KM with ", num_clust, " clusters.\n"))
-  kmeans_out <- kmeans(
-    SingleCellExperiment::reducedDim(sce_hvg, "PCA"), centers = num_clust, iter.max = 1e8,
-    nstart = 2500, algorithm = "MacQueen"
-  )
-  km_label <- paste0("KM_", num_clust)
-  df_hvg[[km_label]] <- as.factor(kmeans_out$cluster)
-}
-```
-
-```{r}
-SummarizedExperiment::rowData(sce_hvg)$feature_symbol <- SummarizedExperiment::rowData(sce_hvg)$external_gene_name
-all_ks <- c(10, 12)
-sce_hvg <- SC3::sc3(
-  sce_hvg,gene_filter = FALSE, ks = all_ks, biology = TRUE, rand_seed = 100, svm_num_cells = 2000
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "Habib_clusters", TYPE = "cat"
 )
-SummarizedExperiment::colData(sce_hvg)[1:2,1:5]
-sce_hvg <- SC3::sc3_run_svm(sce_hvg, ks = all_ks)
-```
-
-```{r}
-name_change = function(DATA,ORIG_NAME,NEW_NAME){
-	index = which(names(DATA) == ORIG_NAME)
-	if( length(index) > 0 ){
-		names(DATA)[index] = NEW_NAME
-	}
-	DATA
-}
-smart_merge = function(x,y,mess=NULL,...){
-	if( !is.null(mess) ){
-		intersect_vars = paste(intersect(names(x),names(y)),collapse=", ")
-		cat(paste0("Merging dataframes on variables = { ",intersect_vars," }\n"))
-	}
-	
-	merge(x,y,by=intersect(names(x),names(y)),...)
-}
-tmp_lab <- read.table("../results/cluster-num-label.txt", 
-                   sep = "\t",header = TRUE, stringsAsFactors = FALSE)
-tmp_lab = name_change(tmp_lab,"Name","Cluster.Name")
-tmp_lab = name_change(tmp_lab,"Name.1","Cell_Type")
-
-tmp_res = read.table("../results/paper-cluster-res.txt", 
-                   sep = "\t",header = TRUE,comment.char = "", stringsAsFactors = FALSE)
-tmp_res = name_change(tmp_res,"X.Genes","nGenes")
-tmp_res = name_change(tmp_res,"X.Transcripts","nTranscripts")
-
-tmp_res = smart_merge(tmp_res, tmp_lab[,c("Cluster.Name","Cell_Type")], 
-                      all.x=TRUE)
-
-df_hvg$Cell.ID = colnames(sce_hvg)
-
-table(df_hvg$Cell.ID %in% tmp_res$Cell.ID, useNA='ifany')
-
-# Merge and compare
-all_clust_res = smart_merge(df_hvg,tmp_res)
-sc3_res = data.frame(SummarizedExperiment::colData(sce_hvg)[,paste0("sc3_",all_ks,"_clusters")], stringsAsFactors = FALSE)
-for(ks in all_ks){
-  sc3_label = paste0("sc3_",ks,"_clusters")
-  sc3_res[,sc3_label] = as.factor(sc3_res[,sc3_label])
-}
-sc3_res$Cell.ID = colnames(sce_hvg)
-all_clust_res = smart_merge(all_clust_res, sc3_res)
-
-table(all_clust_res[,c("Cell_Type","Cluster.ID")], useNA='ifany')
-
-for(num_clust in all_num_clust){
-  km_label = paste0("KM_",num_clust)
-  print(table(all_clust_res[,c("Cell_Type",km_label)]), useNA='ifany')
-  t2 = melt(table(all_clust_res[,c("Cell_Type",km_label)]), useNA='ifany')
-  colnames(t2)[2] = "cluster"
-  print(gg.heatmap(t2,paste0("kmeans ",num_clust," clusters")))
-}
-
-for(ks in all_ks){
-  sc3_label = paste0("sc3_",ks,"_clusters")
-  print(table(all_clust_res[,c("Cell_Type",sc3_label)]), useNA='ifany')
-  t2 = melt(table(all_clust_res[,c("Cell_Type",sc3_label)]), useNA='ifany')
-  colnames(t2)[2] = "cluster"
-  print(gg.heatmap(t2,paste0("sc3 ",ks," clusters")))
-}
-```
-
-```{r}
-all_vars = c("Cell_Type", paste0("KM_",all_num_clust), 
-             paste0("sc3_",all_ks,"_clusters"))
-for(one_var in all_vars){
-  print(ggplot_custom(DATA = all_clust_res,X = "HVG_TSNE1",Y = "HVG_TSNE2",
-                      COL = one_var,TYPE = "cat"))
-}
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "Habib_clusters_name", TYPE = "cat"
+)
+ggplot_custom(
+  DATA = df_hvg, X = "HVG_TSNE1", Y = "HVG_TSNE2",
+  COL = "Habib_cell_type", TYPE = "cat"
+)
+SingleCellExperiment::reducedDims(sce_hvg) <- S4Vectors::SimpleList(PCA = pca, TSNE = tsne$Y)
 ```
 
 # Conclusion
