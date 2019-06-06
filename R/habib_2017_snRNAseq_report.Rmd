@@ -129,7 +129,7 @@ rownames(counts) <- counts$V1
 counts <- as.matrix(counts[ , -1])
 part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
 col_dat <- data.frame(
-  "Samples" = colnames(counts),
+  "Sample" = colnames(counts),
   "Cell ID Stem" = part_cell_id,
   stringsAsFactors = FALSE,
   check.names = FALSE)
@@ -139,8 +139,8 @@ datatable(counts[1:5, 1:3])
 ## Clusters
 
 ```{r}
-names(clust) <- c("Samples", "Habib Clusters")
-clust$`Habib Clusters` <- as.factor(clust$`Habib Clusters`)
+names(clust) <- c("Sample", "Habib Cluster")
+clust$`Habib Cluster` <- as.factor(clust$`Habib Cluster`)
 
 # Add cluster names from Supplementary Table 8 (nmeth.4407-S11.xlsx).
 # The last four clusters lack labels.
@@ -153,13 +153,13 @@ ctype = c(
 
 # Merge cluster names with clust.
 map_clust_name <- data.frame(
-  "Habib Clusters" = as.factor(seq(19)),
-  "Habib Cluster Names" = cname,
-  "Habib Cell Types" = ctype,
+  "Habib Cluster" = as.factor(seq(19)),
+  "Habib Cluster Name" = cname,
+  "Habib Cell Type" = ctype,
   stringsAsFactors = FALSE,
   check.names = FALSE)
 clust <- join(clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
-clust <- clust[match(col_dat$Samples, clust$Samples), ]
+clust <- clust[match(col_dat$Sample, clust$Sample), ]
 
 datatable(clust[1:5, ])
 ```
@@ -167,9 +167,9 @@ datatable(clust[1:5, ])
 ## t-SNE
 
 ```{r}
-names(tsne) = c("Samples", paste0("Habib tSNE ", 1:2))
+names(tsne) = c("Sample", paste0("Habib tSNE ", 1:2))
 col_dat <- cbind(
-  col_dat, clust[ , names(clust) != "Samples"], tsne[ , names(tsne) != "Samples"])
+  col_dat, clust[ , names(clust) != "Sample"], tsne[ , names(tsne) != "Sample"])
 datatable(tsne[1:5, ])
 ```
 
