@@ -93,6 +93,7 @@ library(SingleCellExperiment)
 library(biomaRt)
 library(dplyr)
 library(SummarizedExperiment)
+library(DropletUtils)
 ```
 
 # Original Data {.tabset}
@@ -234,6 +235,40 @@ sce <- sce[keep_genes, ]
 ```{r}
 rowData(sce) <- gene_anno
 sce
+```
+
+# QC
+
+These sections assess and correct issues and irregularities in the dataset.
+
+## Low Quality Cells
+
+In order to remove droplets which do not contain a cell but are rather ambient RNA, we first visualize the inflection point on a knee plot, as described originally in @macosko_highly_2015.
+Then we remove them using `emptyDrops` from the `DropletUtils` package.
+
+```{r}
+bc_rank <- barcodeRanks(counts(sce))
+uniq <- !duplicated(bc_rank$rank)
+par(mar = c(5, 4, 2, 1), bty = "n")
+plot(
+  bc_rank$rank[uniq], bc_rank$total[uniq], log = "xy", xlab = "Rank",
+  ylab = "Total UMI count", cex = 0.5, cex.lab = 1.2)
+abline(h = bc_rank$inflection, col = "darkgreen", lty = 2, lwd = 2)
+abline(h = bc_rank$knee, col = "dodgerblue", lty = 2, lwd = 2)
+legend(
+  "left", legend = c("Inflection", "Knee"), bty = "n", col = c("darkgreen", "dodgerblue"),
+  lty = 2, cex = 1.2, lwd = 2)
+```
+
+```{r, cache = TRUE}
+# This chunk was run with "cache = TRUE".
+set.seed(100)
+emptyDrops_out <- emptyDrops(counts(sce))
+saveRDS(emptyDrops_out, file = file.path(data_dir, "data", "emptyDrops_out.rds"))
+```
+
+```{r}
+tapply(emptyDrops_out$Total, emptyDrops_out$FDR, summary)
 ```
 
 # Conclusion
