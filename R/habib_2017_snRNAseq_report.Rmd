@@ -271,7 +271,7 @@ saveRDS(emptyDrops_out, file = file.path(data_dir, "data", "emptyDrops_out.rds")
 tapply(emptyDrops_out$Total, emptyDrops_out$FDR, summary)
 ```
 
-# Conclusion
+# References
 
 This is the concluding section of the document.
 Here we write relevant results to disk, output the `session_info`, and create a bibliography for works cited.
@@ -279,5 +279,3 @@ Here we write relevant results to disk, output the `session_info`, and create a 
 ```{r}
 session_info()
 ```
-
-# References
