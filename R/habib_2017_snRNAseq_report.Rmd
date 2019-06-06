@@ -99,8 +99,12 @@ This section provides a brief look at the raw data before manipulation.
 
 ## Counts
 
-```{r}
+```{r, cache = TRUE}
+# This chunk was run with "cache = TRUE".
 counts <- fread(file.path(data_dir, "GTEx_droncseq_hip_pcf.umi_counts.txt.gz"), data.table = FALSE)
+```
+
+```{r}
 datatable(counts[1:5, 1:3])
 ```
 
@@ -186,17 +190,15 @@ sce
 
 We add annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
 
-```{r}
-if (file.exists(file.path(results_dir, "gene_anno.rds"))) {
-  gene_anno <- readRDS(file.path(results_dir, "../results/gene_anno.rds"))
-} else {
-  ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
-  attr_string <- c(
-    "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
-    "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
-  gene_anno <- getBM(
-    attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
-  saveRDS(gene_anno, file = file.path(results_dir, "gene_anno.rds"))}
+```{r, cache = TRUE}
+# This chunk was run with "cache = TRUE".
+ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
+attr_string <- c(
+  "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
+  "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
+gene_anno <- getBM(
+  attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
+saveRDS(gene_anno, file = file.path(results_dir, "data", "gene_anno.rds"))
 ```
 
 # Conclusion
