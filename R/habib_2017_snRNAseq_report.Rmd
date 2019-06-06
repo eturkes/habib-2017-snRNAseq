@@ -84,6 +84,7 @@ library(devtools)
 library(data.table)
 library(DT)
 library(plyr)
+library(SingleCellExperiment)
 ```
 
 ```{r}
@@ -169,6 +170,15 @@ names(tsne) = c("Samples", paste0("Habib tSNE ", 1:2))
 col_dat <- cbind(
   col_dat, clust[ , names(clust) != "Samples"], tsne[ , names(tsne) != "Samples"])
 datatable(tsne[1:5, ])
+```
+
+# SingleCellExperiment
+
+The data is now sufficiently prepared to form a SingleCellExperiment (SCE) object.
+
+```{r}
+sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
+sce
 ```
 
 # Conclusion
