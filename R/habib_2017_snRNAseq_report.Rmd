@@ -91,6 +91,8 @@ library(DT)
 library(plyr)
 library(SingleCellExperiment)
 library(biomaRt)
+library(dplyr)
+library(SummarizedExperiment)
 ```
 
 # Original Data {.tabset}
@@ -164,7 +166,8 @@ map_clust_name <- data.frame(
   "Habib Cell Type" = ctype,
   stringsAsFactors = FALSE,
   check.names = FALSE)
-clust <- join(clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
+clust <- join(
+  clust, map_clust_name, by = BiocGenerics::intersect(names(clust), names(map_clust_name)))
 clust <- clust[match(col_dat$Sample, clust$Sample), ]
 
 datatable(clust[1:5, ])
@@ -188,13 +191,9 @@ sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
 sce
 ```
 
-# QC
-
-These sections assess and correct issues and irregularities in the dataset.
-
 ## Gene Annotations
 
-First, we generate annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
+To provide additional metadata, we generate annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
 
 ```{r, cache = TRUE}
 # This chunk was run with "cache = TRUE".
@@ -205,6 +204,36 @@ attr_string <- c(
 gene_anno <- getBM(
   attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
 saveRDS(gene_anno, file = file.path(results_dir, "data", "gene_anno.rds"))
+```
+
+Before merging it into the SCE object, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
+
+```{r}
+# Remove genes not in the RNAseq dataset.
+remove_genes <- which(!gene_anno$external_gene_name %in% rownames(sce))
+gene_anno <- gene_anno[-remove_genes, ]
+
+# Remove annotations to scaffolds, assembly patches, and alternative loci.
+chromosomes <- c(1:22, "X", "Y", "MT")
+gene_anno <- gene_anno[which(gene_anno$chromosome_name %in% chromosomes), ]
+
+# Remove duplicates.
+dup <- table(gene_anno$external_gene_name)
+dup <- sort(dup[dup > 1], decreasing = TRUE)
+dup <- which(gene_anno$external_gene_name %in% names(dup))
+gene_anno2 <- gene_anno[dup, ]
+gene_anno2 <- gene_anno2[which(gene_anno2$hgnc_symbol == gene_anno2$external_gene_name), ]
+gene_anno2 <- distinct(gene_anno2, external_gene_name, .keep_all = TRUE)
+gene_anno <- rbind(gene_anno[-dup, ], gene_anno2)
+
+# Remove missing.
+keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
+sce <- sce[keep_genes, ]
+```
+
+```{r}
+rowData(sce) <- gene_anno
+sce
 ```
 
 # Conclusion
