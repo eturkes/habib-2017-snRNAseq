@@ -85,6 +85,7 @@ library(data.table)
 library(DT)
 library(plyr)
 library(SingleCellExperiment)
+library(biomaRt)
 ```
 
 ```{r}
@@ -179,6 +180,24 @@ The data is now sufficiently prepared to form a SingleCellExperiment (SCE) objec
 ```{r}
 sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
 sce
+```
+
+# Gene Annotations
+
+We add annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
+
+```{r}
+if (file.exists(file.path(results_dir, "gene_anno.rds"))) {
+  gene_anno <- readRDS(file.path(results_dir, "../results/gene_anno.rds"))
+} else {
+  ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
+  attr_string <- c(
+    "HGNC Symbol", "Ensembl Gene ID", "External Gene Name", "Chromosome Name",
+    "Start Position", "End Position", "Strand", "Description",
+    "Percentage Gene GC Content", "Gene Biotype")
+  gene_anno <- getBM(
+    attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
+  saveRDS(gene_anno, file = file.path(results_dir, "gene_anno.rds"))}
 ```
 
 # Conclusion
