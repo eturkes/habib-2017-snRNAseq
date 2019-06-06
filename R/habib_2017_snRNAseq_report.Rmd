@@ -167,10 +167,12 @@ map_clust_name <- data.frame(
   "Habib Cell Type" = ctype,
   stringsAsFactors = FALSE,
   check.names = FALSE)
+
+# Must resolve masking conflict with intersect.
 clust <- join(
   clust, map_clust_name, by = BiocGenerics::intersect(names(clust), names(map_clust_name)))
-clust <- clust[match(col_dat$Sample, clust$Sample), ]
 
+clust <- clust[match(col_dat$Sample, clust$Sample), ]
 datatable(clust[1:5, ])
 ```
 
