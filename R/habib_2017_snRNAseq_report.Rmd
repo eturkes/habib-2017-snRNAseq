@@ -192,9 +192,8 @@ if (file.exists(file.path(results_dir, "gene_anno.rds"))) {
 } else {
   ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
   attr_string <- c(
-    "HGNC Symbol", "Ensembl Gene ID", "External Gene Name", "Chromosome Name",
-    "Start Position", "End Position", "Strand", "Description",
-    "Percentage Gene GC Content", "Gene Biotype")
+    "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
+    "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
   gene_anno <- getBM(
     attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
   saveRDS(gene_anno, file = file.path(results_dir, "gene_anno.rds"))}
