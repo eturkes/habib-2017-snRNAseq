@@ -122,11 +122,13 @@ tsne = fread(file.path(data_dir, "../data/GTEx_droncseq_hip_pcf.tsne.txt.gz"), d
 datatable(tsne[1:5, ])
 ```
 
-# Preliminary Cleaning {.tabset}
+# Preliminary Cleaning
 
 Here we provide more informative labels to things and transform the data into more convenient formats for downstream analysis.
 
-## Counts
+## Relabeling {.tabset}
+
+### Counts
 
 ```{r}
 rownames(counts) <- counts$V1
@@ -140,7 +142,7 @@ col_dat <- data.frame(
 datatable(counts[1:5, 1:3])
 ```
 
-## Clusters
+### Clusters
 
 ```{r}
 names(clust) <- c("Sample", "Habib Cluster")
@@ -168,7 +170,7 @@ clust <- clust[match(col_dat$Sample, clust$Sample), ]
 datatable(clust[1:5, ])
 ```
 
-## t-SNE
+### t-SNE
 
 ```{r}
 names(tsne) = c("Sample", paste0("Habib tSNE ", 1:2))
@@ -177,7 +179,7 @@ col_dat <- cbind(
 datatable(tsne[1:5, ])
 ```
 
-# SingleCellExperiment
+## SingleCellExperiment
 
 The data is now sufficiently prepared to form a SingleCellExperiment (SCE) object.
 
@@ -186,9 +188,13 @@ sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
 sce
 ```
 
-# Gene Annotations
+# QC
 
-We add annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
+These sections assess and correct issues and irregularities in the dataset.
+
+## Gene Annotations
+
+First, we generate annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
 
 ```{r, cache = TRUE}
 # This chunk was run with "cache = TRUE".
