@@ -429,6 +429,37 @@ As the two plots appear to be highly correlated, we go ahead and perform the nor
 sce <- normalize(sce)
 ```
 
+# Dimension Reduction
+
+This section details steps taken to reduce the dimensionality of the dataset through methods like PCA, t-SNE, UMAP, etc.
+
+## Highly Variable Genes
+
+We start by identifying highly variable genes (HVGs), which is the first step in many PCA/t-SNE approaches.
+HVGs are those that exhibit a high amount of biological signal relative to background noise.
+First, let's visualize variability in our dataset.
+
+```{r}
+new_trend <- makeTechTrend(x = sce)
+fit <- trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
+par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
+plot(fit$mean, fit$var, pch = 20, col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "log(mean)", ylab = "var")
+curve(fit$trend(x), col = "orange", lwd = 2, add = TRUE)
+curve(new_trend(x), col = "red", lwd = 2, add = TRUE)
+legend(
+  "top", legend = c("Poisson noise", "observed trend"), lty = 1,
+  lwd = 2, col = c("red", "orange"), bty = "n")
+```
+
+And then plot the HVGs themselves.
+
+```{r}
+fit$trend <- new_trend
+dec <- decomposeVar(fit = fit)
+top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
+plotExpression(sce, features = rownames(top_dec)[1:10])
+```
+
 # References
 
 This is the concluding section of the document.
