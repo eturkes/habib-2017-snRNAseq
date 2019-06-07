@@ -205,7 +205,7 @@ datatable(clust[1:5, ])
 ### t-SNE
 
 ```{r}
-names(tsne) = c("Sample", paste0("Habib tSNE ", 1:2))
+names(tsne) = c("Sample", paste0("Habib t-SNE ", 1:2))
 
 # For subsetting regions.
 tsne <- tsne[keep, ]
@@ -458,6 +458,27 @@ fit$trend <- new_trend
 dec <- decomposeVar(fit = fit)
 top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
 plotExpression(sce, features = rownames(top_dec)[1:10])
+```
+
+## PCA
+
+We start by performing PCA on all of the genes rather than just HVGs using `denoisePCA` from the `scran` package.
+This function automatically selects PCs by modelling technical noise.
+
+```{r}
+sce <- denoisePCA(sce, technical = new_trend, approx = TRUE)
+par(mfrow = c(1, 1))
+plot(
+  log10(attr(reducedDim(sce), "percentVar")), xlab = "PC", ylab = "log10(Prop of variance explained)",
+  pch = 20, cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
+abline(v = ncol(reducedDim(sce,"PCA")), lty = 2, col = "red")
+df_redDim <- data.frame(
+  colData(sce)[ , c(
+    "Sample", "Cell ID Stem", paste0("Habib t-SNE ", 1:2), "log10_total_features_by_counts",
+    "Habib Cluster", "Habib Cluster Name", "Habib Cell Type")],
+  reducedDim(sce, "PCA")[ , 1:2],
+  stringsAsFactors = FALSE)
+rownames(df_redDim) <- NULL
 ```
 
 # References
