@@ -246,7 +246,8 @@ These sections assess and correct issues and irregularities in the dataset.
 ## Low Quality Cells
 
 In order to remove droplets which do not contain a cell but are rather ambient RNA, we first visualize the inflection point on a knee plot, as described originally in @macosko_highly_2015.
-Then we remove them using `emptyDrops` from the `DropletUtils` package.
+Removal was to originally be done using `emptyDrops` from the `DropletUtils` package, but due to an unresolved error (`no counts available to estimate the ambient profile`), we skip it.
+In any case, all 14,963 cells were used for the analysis in @habib_massively_2017.
 
 ```{r}
 bc_rank <- barcodeRanks(counts(sce))
@@ -260,17 +261,6 @@ abline(h = bc_rank$knee, col = "dodgerblue", lty = 2, lwd = 2)
 legend(
   "left", legend = c("Inflection", "Knee"), bty = "n", col = c("darkgreen", "dodgerblue"),
   lty = 2, cex = 1.2, lwd = 2)
-```
-
-```{r, cache = TRUE}
-# This chunk was run with "cache = TRUE".
-set.seed(100)
-emptyDrops_out <- emptyDrops(counts(sce))
-saveRDS(emptyDrops_out, file = file.path(data_dir, "data", "emptyDrops_out.rds"))
-```
-
-```{r}
-tapply(emptyDrops_out$Total, emptyDrops_out$FDR, summary)
 ```
 
 # References
