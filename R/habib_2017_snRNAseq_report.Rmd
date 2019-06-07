@@ -96,6 +96,7 @@ library(SummarizedExperiment)
 library(DropletUtils)
 library(scater)
 library(scran)
+library(ggplot2)
 ```
 
 # Original Data {.tabset}
@@ -120,7 +121,7 @@ clust <- fread(file.path(data_dir, "GTEx_droncseq_hip_pcf.clusters.txt.gz"), dat
 datatable(clust[1:5, ])
 ```
 
-## t-SNE
+## tSNE
 
 ```{r}
 tsne = fread(file.path(data_dir, "../data/GTEx_droncseq_hip_pcf.tsne.txt.gz"), data.table = FALSE)
@@ -157,12 +158,12 @@ datatable(counts[1:5, 1:3])
 ### Clusters
 
 ```{r}
-names(clust) <- c("Sample", "Habib Cluster")
+names(clust) <- c("sample", "habib_cluster")
 
 # For subsetting regions.
 clust <- clust[keep, ]
 
-clust$`Habib Cluster` <- as.factor(clust$`Habib Cluster`)
+clust$habib_cluster <- as.factor(clust$habib_cluster)
 
 # Add cluster names from Supplementary Table 8 (nmeth.4407-S11.xlsx).
 # The last four clusters lack labels.
@@ -175,9 +176,9 @@ ctype = c(
 
 # Merge cluster names with clust.
 map_clust_name <- data.frame(
-  "Habib Cluster" = as.factor(seq(19)),
-  "Habib Cluster Name" = cname,
-  "Habib Cell Type" = ctype,
+  habib_cluster = as.factor(seq(19)),
+  habib_cluster_name = cname,
+  habib_cell_type = ctype,
   stringsAsFactors = FALSE,
   check.names = FALSE)
 
@@ -186,26 +187,26 @@ clust <- join(
   clust, map_clust_name, by = BiocGenerics::intersect(names(clust), names(map_clust_name)))
 
 # For subsetting cell type.
-ckeep <- grep(cell_types, clust$`Habib Cluster Name`)
+ckeep <- grep(cell_types, clust$habib_cluster_name)
 clust <- clust[ckeep, ]
 counts <- counts[ , ckeep]
 
 # Moved from chunk 1.
 part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
 col_dat <- data.frame(
-  "Sample" = colnames(counts),
-  "Cell ID Stem" = part_cell_id,
+  "sample" = colnames(counts),
+  "cell_id_stem" = part_cell_id,
   stringsAsFactors = FALSE,
   check.names = FALSE)
 
-clust <- clust[match(col_dat$Sample, clust$Sample), ]
+clust <- clust[match(col_dat$sample, clust$sample), ]
 datatable(clust[1:5, ])
 ```
 
-### t-SNE
+### tSNE
 
 ```{r}
-names(tsne) = c("Sample", paste0("Habib t-SNE ", 1:2))
+names(tsne) = c("sample", paste0("habib_tsne", 1:2))
 
 # For subsetting regions.
 tsne <- tsne[keep, ]
@@ -214,7 +215,7 @@ tsne <- tsne[keep, ]
 tsne <- tsne[ckeep, ]
 
 col_dat <- cbind(
-  col_dat, clust[ , names(clust) != "Sample"], tsne[ , names(tsne) != "Sample"])
+  col_dat, clust[ , names(clust) != "sample"], tsne[ , names(tsne) != "sample"])
 datatable(tsne[1:5, ])
 ```
 
@@ -431,11 +432,11 @@ sce <- normalize(sce)
 
 # Dimension Reduction
 
-This section details steps taken to reduce the dimensionality of the dataset through methods like PCA, t-SNE, UMAP, etc.
+This section details steps taken to reduce the dimensionality of the dataset through methods like PCA, tSNE, UMAP, etc.
 
 ## Highly Variable Genes
 
-We start by identifying highly variable genes (HVGs), which is the first step in many PCA/t-SNE approaches.
+We start by identifying highly variable genes (HVGs), which is the first step in many PCA/tSNE approaches.
 HVGs are those that exhibit a high amount of biological signal relative to background noise.
 First, let's visualize variability in our dataset.
 
@@ -474,11 +475,47 @@ plot(
 abline(v = ncol(reducedDim(sce,"PCA")), lty = 2, col = "red")
 df_redDim <- data.frame(
   colData(sce)[ , c(
-    "Sample", "Cell ID Stem", paste0("Habib t-SNE ", 1:2), "log10_total_features_by_counts",
-    "Habib Cluster", "Habib Cluster Name", "Habib Cell Type")],
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
+    "habib_cluster", "habib_cluster_name", "habib_cell_type")],
   reducedDim(sce, "PCA")[ , 1:2],
   stringsAsFactors = FALSE)
 rownames(df_redDim) <- NULL
+```
+
+## tSNE
+
+We use several approaches to identify clusters using tSNE, so this section is broken down into multiple subsections.
+Let's define a function for consistant plotting throughout.
+
+```{r}
+ggplot_custom = function(data, x, y, col, type) {
+	gg <- ggplot(data, aes_string(x = x, y = y)) +
+		geom_point(size = 0.2, alpha = 0.6, aes_string(col = col)) +
+		theme_classic() + theme(legend.position = "bottom")
+	if (type == "cont") {
+		gg <- gg + scale_colour_gradient(low = "blue", high = "red")
+	} else if (type == "cat") {
+		gg <- gg + guides(color = guide_legend(override.aes = list(size = 3)))
+	}
+	gg}
+```
+
+### Habib Coordinates
+
+As tSNE coordinates were released with the original dataset, we plot them here to replicate the results of @habib_massively_2017.
+
+```{r}
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "cell_id_stem", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2",
+  col = "log10_total_features_by_counts", type = "cont")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
 # References
