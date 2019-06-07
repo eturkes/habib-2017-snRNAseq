@@ -95,6 +95,7 @@ library(dplyr)
 library(SummarizedExperiment)
 library(DropletUtils)
 library(scater)
+library(scran)
 ```
 
 # Original Data {.tabset}
@@ -353,6 +354,31 @@ barplot(
   rowData(sce)$mean_counts[od1[20:1]], las = 1, names.arg = rowData(sce)$hgnc_symbol[od1[20:1]],
   horiz = TRUE, cex.names = 0.8, cex.axis = 0.8,
   xlab = "ave # of UMI")
+```
+
+## Normalization
+
+We use `computeSumFactors` from the `scran` package to perform normalization.
+This function uses a linear deconvolution system to account for expected variation across different cell types/sizes [@l_lun_pooling_2016].
+We also remove cells that have size factors from the function that are very small ($ < 0.01$) or negative.
+To verify the effectiveness of this method, we plot each cell's size factor against their total counts, which has the result of being highly correlated.
+
+```{r}
+clusters <- quickCluster(sce, min.mean = 0.1, method = "igraph")
+sce <- computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
+sce <- sce[ , which(sizeFactors(sce) > 0.01)]
+par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
+smoothScatter(
+  sce$total_counts, sizeFactors(sce), log = "xy", xlab = "total counts", ylab = "size factors")
+plot(
+  sce$total_counts, sizeFactors(sce), log = "xy", xlab = "total counts",
+  ylab = "size factors", cex = 0.3, pch = 20, col = rgb(0.1, 0.2, 0.7, 0.3))
+abline(h = 0.05)
+```
+
+```{r}
+sce <- sce[ , which(sizeFactors(sce) > 0.05)]
+sce <- normalize(sce)
 ```
 
 # References
