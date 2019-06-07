@@ -129,21 +129,28 @@ datatable(tsne[1:5, ])
 
 # Preliminary Cleaning
 
-Here we provide more informative labels to things and transform the data into more convenient formats for downstream analysis.
+Here we provide more informative labels to things, subset to the regions/cell types we are interested in, and transform the data into more convenient formats for downstream analysis.
 
-## Relabeling {.tabset}
+## Relabeling and Subsetting {.tabset}
+
+A more elegant solution is planned, but for now, the desired regions/cell types can be set here.
+
+```{r}
+# TODO: Simplify formatting requirements for the variables.
+regions <- "*PFC*"
+cell_types <- "exPFC1|exPFC2|GABA1|GABA2"
+```
 
 ### Counts
 
 ```{r}
 rownames(counts) <- counts$V1
 counts <- as.matrix(counts[ , -1])
-part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
-col_dat <- data.frame(
-  "Sample" = colnames(counts),
-  "Cell ID Stem" = part_cell_id,
-  stringsAsFactors = FALSE,
-  check.names = FALSE)
+
+# For subsetting regions.
+keep <- grep(regions, colnames(counts))
+counts <- counts[ , keep]
+
 datatable(counts[1:5, 1:3])
 ```
 
@@ -151,6 +158,10 @@ datatable(counts[1:5, 1:3])
 
 ```{r}
 names(clust) <- c("Sample", "Habib Cluster")
+
+# For subsetting regions.
+clust <- clust[keep, ]
+
 clust$`Habib Cluster` <- as.factor(clust$`Habib Cluster`)
 
 # Add cluster names from Supplementary Table 8 (nmeth.4407-S11.xlsx).
@@ -174,6 +185,19 @@ map_clust_name <- data.frame(
 clust <- join(
   clust, map_clust_name, by = BiocGenerics::intersect(names(clust), names(map_clust_name)))
 
+# For subsetting cell type.
+ckeep <- grep(cell_types, clust$`Habib Cluster Name`)
+clust <- clust[ckeep, ]
+counts <- counts[ , ckeep]
+
+# Moved from chunk 1.
+part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
+col_dat <- data.frame(
+  "Sample" = colnames(counts),
+  "Cell ID Stem" = part_cell_id,
+  stringsAsFactors = FALSE,
+  check.names = FALSE)
+
 clust <- clust[match(col_dat$Sample, clust$Sample), ]
 datatable(clust[1:5, ])
 ```
@@ -182,6 +206,13 @@ datatable(clust[1:5, ])
 
 ```{r}
 names(tsne) = c("Sample", paste0("Habib tSNE ", 1:2))
+
+# For subsetting regions.
+tsne <- tsne[keep, ]
+
+# For subsetting cell type.
+tsne <- tsne[ckeep, ]
+
 col_dat <- cbind(
   col_dat, clust[ , names(clust) != "Sample"], tsne[ , names(tsne) != "Sample"])
 datatable(tsne[1:5, ])
