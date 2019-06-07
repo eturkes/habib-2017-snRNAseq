@@ -100,6 +100,7 @@ library(ggplot2)
 library(svd)
 library(Rtsne)
 library(S4Vectors)
+library(SC3)
 ```
 
 # Original Data {.tabset}
@@ -621,9 +622,29 @@ for(num_clust in all_num_clust) {
   kmeans_out <- kmeans(
     reducedDim(sce_hvg, "PCA"), centers = num_clust, iter.max = 1e8,
     nstart = 2500, algorithm = "MacQueen")
-  km_label <- paste0("km",num_clust)
+  km_label <- paste0("km", num_clust)
   df_hvg[[km_label]] = as.factor(kmeans_out$cluster)
 }
+```
+
+## SC3
+
+As an alternative method, we also cluster using SC3 [@kiselev_sc3_2017].
+We SC3 to cluster the first 500 cells and then run an SVM to predict the labels of all other cells.
+
+```{r, cache = TRUE}
+# This chunk was run with "cache = TRUE".
+rowData(sce_hvg)$feature_symbol <- rowData(sce_hvg)$external_gene_name
+all_ks <- c(2, 4)
+sce_hvg <- sc3(
+  sce_hvg, gene_filter = FALSE, ks = all_ks, biology = TRUE, rand_seed = 100, svm_num_cells = 500)
+sce_hvg <- sc3_run_svm(sce_hvg, ks = all_ks)
+```
+
+```{r}
+for(one_ks in all_ks) {
+  sc3_label <- paste0("sc3_", one_ks)
+  df_hvg[[sc3_label]] <- as.factor(colData(sce_hvg)[, sc3_label])}
 ```
 
 # References
