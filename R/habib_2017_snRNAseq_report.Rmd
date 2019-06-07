@@ -94,6 +94,7 @@ library(biomaRt)
 library(dplyr)
 library(SummarizedExperiment)
 library(DropletUtils)
+library(scater)
 ```
 
 # Original Data {.tabset}
@@ -245,8 +246,8 @@ These sections assess and correct issues and irregularities in the dataset.
 
 ## Low Quality Cells
 
-In order to remove droplets which do not contain a cell but are rather ambient RNA, we first visualize the inflection point on a knee plot, as described originally in @macosko_highly_2015.
-Removal was to originally be done using `emptyDrops` from the `DropletUtils` package, but due to an unresolved error (`no counts available to estimate the ambient profile`), we skip it.
+In order to remove droplets which do not contain a cell but are rather ambient RNA, we visualize the inflection point on a knee plot, as described originally in @macosko_highly_2015.
+Removal was then to be originally done using `emptyDrops` from the `DropletUtils` package, but due to an unresolved error (`no counts available to estimate the ambient profile`), we skip it.
 In any case, all 14,963 cells were used for the analysis in @habib_massively_2017.
 
 ```{r}
@@ -261,6 +262,53 @@ abline(h = bc_rank$knee, col = "dodgerblue", lty = 2, lwd = 2)
 legend(
   "left", legend = c("Inflection", "Knee"), bty = "n", col = c("darkgreen", "dodgerblue"),
   lty = 2, cex = 1.2, lwd = 2)
+```
+
+## Mito/Ribo Genes
+
+Using an annotation from [HGNC](https://www.genenames.org/), we first identify and then remove mitochondrial/ribosomal genes.
+
+```{r}
+ribo_genes <- read.table(
+  file.path(results_dir, "data", "ribo-genes.txt"), sep = "\t",
+  header = TRUE, stringsAsFactors = FALSE)
+is_mito <- which(rowData(sce)$chromosome_name == "MT")
+is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
+sce <- calculateQCMetrics(sce, feature_controls = list(Mt = is_mito, Ri = is_ribo))
+par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
+hist(
+  log10(sce$total_counts), xlab = "log10(Library sizes)", main = "",
+  breaks = 20, col = "grey80", ylab = "Number of cells")
+hist(
+  log10(sce$total_features_by_counts), xlab = "log10(# of expressed genes)", main = "",
+  breaks = 20, col = "grey80", ylab = "Number of cells")
+hist(
+  sce$pct_counts_Ri, xlab = "Ribosome prop. (%)", ylab = "Number of cells",
+  breaks = 40, main = "", col = "grey80")
+hist(
+  sce$pct_counts_Mt, xlab = "Mitochondrial prop. (%)", ylab = "Number of cells",
+  breaks = 80, main = "", col = "grey80")
+par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
+smoothScatter(
+  log10(sce$total_counts), log10(sce$total_features_by_counts),
+  xlab = "log10(Library sizes)", ylab = "log10(# of expressed genes)")
+smoothScatter(
+  log10(sce$total_counts), sce$pct_counts_Ri,
+  xlab = "log10(Library sizes)", ylab = "Ribosome prop. (%)")
+smoothScatter(
+  log10(sce$total_counts), sce$pct_counts_Mt,
+  xlab = "log10(Library sizes)", ylab = "Mitochondrial prop. (%)")
+smoothScatter(
+  sce$pct_counts_Ri,sce$pct_counts_Mt, xlab = "Ribosome prop. (%)", ylab = "Mitochondrial prop. (%)")
+```
+
+```{r}
+libsize_drop <- isOutlier(sce$total_counts, nmads = 3, type = "lower", log = TRUE)
+feature_drop <- isOutlier(sce$total_features_by_counts, nmads = 3, type = "lower", log = TRUE)
+mito_drop <- isOutlier(sce$pct_counts_Mt, nmads = 3, type = "higher")
+ribo_drop <- isOutlier(sce$pct_counts_Ri, nmads = 3, type = "higher")
+keep <- !(libsize_drop | feature_drop | mito_drop | ribo_drop)
+sce <- sce[ , keep]
 ```
 
 # References
