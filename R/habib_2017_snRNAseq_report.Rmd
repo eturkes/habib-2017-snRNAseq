@@ -233,13 +233,15 @@ To provide additional metadata, we generate annotations based on the hg19 refere
 
 ```{r, cache = TRUE}
 # This chunk was run with "cache = TRUE".
-ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
-attr_string <- c(
-  "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
-  "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
-gene_anno <- getBM(
-  attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
-saveRDS(gene_anno, file = file.path(results_dir, "data", "gene_anno.rds"))
+# Due to issues with cache invalidation, we read in the saved RDS everytime for now.
+gene_anno <- readRDS(file.path(results_dir, "data", "gene_anno.rds"))
+# ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
+# attr_string <- c(
+#   "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
+#   "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
+# gene_anno <- getBM(
+#   attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
+# saveRDS(gene_anno, file = file.path(results_dir, "data", "gene_anno.rds"))
 ```
 
 Before merging it into the SCE object, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
