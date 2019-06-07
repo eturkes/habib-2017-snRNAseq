@@ -603,6 +603,29 @@ ggplot_custom(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
+# Clustering
+
+The above section simply altered the dimensionality or visualization of the previously established clusters in @habib_massively_2017.
+Now, we use various methods to generate new clusters.
+
+## k-means
+
+We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 2-4 clusters.
+
+```{r, cache = TRUE}
+# This chunk was run with "cache = TRUE".
+all_num_clust <- c(2:4)
+df_hvg <- df_hvg[ , !grepl("^KM_", names(df_hvg))]
+for(num_clust in all_num_clust) {
+  cat(paste0("k-means with ", num_clust, " clusters.\n"))
+  kmeans_out <- kmeans(
+    reducedDim(sce_hvg, "PCA"), centers = num_clust, iter.max = 1e8,
+    nstart = 2500, algorithm = "MacQueen")
+  km_label <- paste0("km",num_clust)
+  df_hvg[[km_label]] = as.factor(kmeans_out$cluster)
+}
+```
+
 # References
 
 This is the concluding section of the document.
