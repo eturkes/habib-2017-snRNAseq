@@ -482,7 +482,7 @@ df_redDim <- data.frame(
 rownames(df_redDim) <- NULL
 ```
 
-## tSNE
+## tSNE {.tabset}
 
 We use several approaches to identify clusters using tSNE, so this section is broken down into multiple subsections.
 Let's define a function for consistant plotting throughout.
@@ -516,6 +516,30 @@ ggplot_custom(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat")
 ggplot_custom(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cell_type", type = "cat")
+```
+
+### New Coordinates
+
+We also calculate and plot new t-SNE coordinates.
+
+```{r}
+sce <- runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
+tmp_df <- data.frame(reducedDim(sce, "TSNE"), stringsAsFactors = FALSE)
+rownames(tmp_df) <- NULL
+names(tmp_df) <- paste0("new_tsne", 1:2)
+df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
+rm(tmp_df)
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "cell_id_stem", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2",
+  col = "log10_total_features_by_counts", type = "cont")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
 # References
