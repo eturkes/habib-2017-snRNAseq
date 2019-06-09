@@ -73,7 +73,7 @@ The source code and instructions for rerunning the analysis can be found at [git
 
 **Read just this section for the final results of the analysis and a summary of the methods.**
 
-# ~~~~ Breakdown of Methods ~~~~ {-}
+# ~~~ Breakdown of Methods ~~~ {-}
 
 The following top-level sections breakdown the methods used to perform the analysis.
 We start by setting some global variables and loading in any required packages.
@@ -615,7 +615,7 @@ We apply a k-means method atop the 50 PCs generated earlier, choosing to generat
 
 ```{r, cache = TRUE}
 # This chunk was run with "cache = TRUE".
-all_num_clust <- c(2:4)
+all_num_clust <- c(5:10)
 df_hvg <- df_hvg[ , !grepl("^KM_", names(df_hvg))]
 for(num_clust in all_num_clust) {
   cat(paste0("k-means with ", num_clust, " clusters.\n"))
@@ -635,22 +635,94 @@ We SC3 to cluster the first 500 cells and then run an SVM to predict the labels 
 ```{r, cache = TRUE}
 # This chunk was run with "cache = TRUE".
 rowData(sce_hvg)$feature_symbol <- rowData(sce_hvg)$external_gene_name
-all_ks <- c(2, 4)
+all_ks <- c(5, 10)
 sce_hvg <- sc3(
   sce_hvg, gene_filter = FALSE, ks = all_ks, biology = TRUE, rand_seed = 100, svm_num_cells = 500)
 sce_hvg <- sc3_run_svm(sce_hvg, ks = all_ks)
 ```
 
 ```{r}
-for(one_ks in all_ks) {
-  sc3_label <- paste0("sc3_", one_ks)
+for (one_ks in all_ks) {
+  sc3_label <- paste0("sc3_", one_ks, "_clusters")
   df_hvg[[sc3_label]] <- as.factor(colData(sce_hvg)[, sc3_label])}
+```
+
+## Visualization
+
+Now we visualize the correlation between our two new cluster sets as well as the original clusters in @habib_massively_2017.
+We start by reading in Supplementary Table:10 from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
+
+```{r}
+name_change <- function(data, orig_name, new_name) {
+	index = which(names(data) == orig_name)
+	if (length(index) > 0) {
+		names(data)[index] = new_name
+	}
+	data}
+custom_merge = function(x, y, mess = NULL, ...) {
+	if (!is.null(mess)) {
+		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
+		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
+	}
+	merge(x, y, by = BiocGenerics::intersect(names(x), names(y)), ...)} # Resolve masking conflict.
+
+tmp_lab <- read.table(
+  file.path(results_dir, "data", "cluster-num-label.txt"), sep = "\t",
+  header = TRUE, stringsAsFactors = FALSE)
+tmp_lab <- name_change(tmp_lab, "Name", "Cluster.Name")
+tmp_lab <- name_change(tmp_lab, "Name.1", "Cell_Type")
+
+tmp_res <- read.table(
+  file.path(results_dir, "data", "paper-cluster-res.txt"), sep = "\t", header = TRUE,
+  comment.char = "", stringsAsFactors = FALSE)
+tmp_res <- name_change(tmp_res, "X.Genes", "nGenes")
+tmp_res <- name_change(tmp_res, "X.Transcripts", "nTranscripts")
+
+tmp_res <- custom_merge(tmp_res, tmp_lab[ , c("Cluster.Name", "Cell_Type")], all.x = TRUE)
+
+# Merge into our data.
+df_hvg$Cell.ID <- colnames(sce_hvg)
+all_clust_res <- custom_merge(df_hvg, tmp_res)
+sc3_res <- data.frame(colData(sce_hvg)[ , paste0("sc3_", all_ks, "_clusters")], stringsAsFactors = FALSE)
+for(ks in all_ks) {
+  sc3_label <- paste0("sc3_", ks, "_clusters")
+  sc3_res[ , sc3_label] <- as.factor(sc3_res[ , sc3_label])}
+sc3_res$Cell.ID <- colnames(sce_hvg)
+all_clust_res <- custom_merge(all_clust_res, sc3_res)
+```
+
+### t-SNE {.tabset}
+
+We visualize our clusters using t-SNE, looking at both the HVG t-SNE generated earlier and coloring our clustering results atop of the clusters in @habib_massively_2017.
+
+#### HVG
+
+```{r}
+all_vars = c("Cell_Type", paste0("km", all_num_clust), paste0("sc3_", all_ks, "_clusters"))
+for (one_var in all_vars) {
+  print(ggplot_custom(
+    data = all_clust_res, x = "hvg_tsne1", y = "hvg_tsne2", col = one_var, type = "cat"))}
+```
+
+#### Habib
+
+```{r}
+all_vars = c("Cell_Type", paste0("km", all_num_clust), paste0("sc3_", all_ks, "_clusters"))
+for (one_var in all_vars) {
+  print(ggplot_custom(
+    data = all_clust_res, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat"))}
 ```
 
 # References
 
 This is the concluding section of the document.
 Here we write relevant results to disk, output the `session_info`, and create a bibliography for works cited.
+
+```{r}
+saveRDS(sce, file = file.path(results_dir, "data", "sce.rds"))
+saveRDS(sce_hvg, file = file.path(results_dir, "data", "sce_hvg.rds"))
+saveRDS(all_clust_res, file = file.path(results_dir, "data", "all_clust_res.rds"))
+```
 
 ```{r}
 session_info()
