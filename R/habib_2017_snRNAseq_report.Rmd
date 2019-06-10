@@ -80,6 +80,7 @@ We start by setting some global variables and loading in any required packages.
 
 ```{r}
 data_dir <- file.path(getwd(), "..", "data")
+assets_dir <- file.path(getwd(), "..", "assets")
 results_dir <- file.path(getwd(), "..", "results")
 ```
 
@@ -239,14 +240,14 @@ To provide additional metadata, we generate annotations based on the hg19 refere
 ```{r, cache = TRUE}
 # This chunk was run with "cache = TRUE".
 # Due to issues with cache invalidation, we read in the saved RDS everytime for now.
-gene_anno <- readRDS(file.path(results_dir, "data", "gene_anno.rds"))
+gene_anno <- readRDS(file.path(assets_dir, "gene_anno.rds"))
 # ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
 # attr_string <- c(
 #   "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
 #   "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
 # gene_anno <- getBM(
 #   attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
-# saveRDS(gene_anno, file = file.path(results_dir, "data", "gene_anno.rds"))
+# saveRDS(gene_anno, file = file.path(assets_dir, "gene_anno.rds"))
 ```
 
 Before merging it into the SCE object, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
@@ -316,7 +317,7 @@ Using an annotation from [HGNC](https://www.genenames.org/), we first assess the
 
 ```{r}
 ribo_genes <- read.table(
-  file.path(results_dir, "data", "ribo-genes.txt"), sep = "\t",
+  file.path(assets_dir, "ribo-genes.txt"), sep = "\t",
   header = TRUE, stringsAsFactors = FALSE)
 is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
@@ -672,13 +673,13 @@ custom_merge = function(x, y, mess = NULL, ...) {
 	merge(x, y, by = BiocGenerics::intersect(names(x), names(y)), ...)} # Resolve masking conflict.
 
 tmp_lab <- read.table(
-  file.path(results_dir, "data", "cluster-num-label.txt"), sep = "\t",
+  file.path(assets_dir, "cluster-num-label.txt"), sep = "\t",
   header = TRUE, stringsAsFactors = FALSE)
 tmp_lab <- name_change(tmp_lab, "Name", "Cluster.Name")
 tmp_lab <- name_change(tmp_lab, "Name.1", "Cell_Type")
 
 tmp_res <- read.table(
-  file.path(results_dir, "data", "paper-cluster-res.txt"), sep = "\t", header = TRUE,
+  file.path(assets_dir, "paper-cluster-res.txt"), sep = "\t", header = TRUE,
   comment.char = "", stringsAsFactors = FALSE)
 tmp_res <- name_change(tmp_res, "X.Genes", "nGenes")
 tmp_res <- name_change(tmp_res, "X.Transcripts", "nTranscripts")
