@@ -732,6 +732,38 @@ The diagonality of the concensus matrix can be quantitatively measured using a s
 sc3_plot_silhouette(sce, k = 15)
 ```
 
+# Differential Expression
+
+In this section, we calculate differentially expressed genes (DEGs) between the newly created clusters, eventually using this data to assign marker genes to each cluster.
+
+## Expression Matrix
+
+Though this figure does not describe DEGs, it is the first step of a DEG analysis.
+The heatplot describes the absolute expression of each gene across the clusters.
+
+```{r}
+sc3_plot_expression(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+```
+
+## Kruskal-Wallis
+
+Our chosen method to calculate DEGs will be the non-parametric Kruskal-Wallis test.
+The figure displays the top 50 DEGs where $p < 0.01$.
+
+```{r}
+sc3_plot_de_genes(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+```
+
+## Marker Genes
+
+To assign marker genes, a binary classifier is constructed based on the mean cluster expression value.
+Classifier prediction is then calculated using the gene expression ranks.
+Genes with $AUROC > 0.85$ and $p < 0.01$ are selected and the top 10 are visualized in the following figure.
+
+```{r}
+sc3_plot_markers(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+```
+
 # References
 
 This is the concluding section of the document.
