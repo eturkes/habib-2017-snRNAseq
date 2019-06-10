@@ -717,6 +717,21 @@ for (one_var in all_vars) {
     data = all_clust_res, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat"))}
 ```
 
+### Consensus Matrix
+
+We can also assess the performance of our SC3 clusters using a correlation matrix.
+In an ideal situation, diagonal blocks will be completely red while off-diagonal elements are completely blue.
+
+```{r}
+sc3_plot_consensus(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+```
+
+The diagonality of the concensus matrix can be quantitatively measured using a silhouette plot, where 1 represents a perfectly block-diagonal consensus matrix.
+
+```{r}
+sc3_plot_silhouette(sce, k = 15)
+```
+
 # References
 
 This is the concluding section of the document.
