@@ -649,6 +649,7 @@ sce_hvg <- sc3_run_svm(sce_hvg, ks = all_ks)
 for (one_ks in all_ks) {
   sc3_label <- paste0("sc3_", one_ks, "_clusters")
   df_hvg[[sc3_label]] <- as.factor(colData(sce_hvg)[, sc3_label])}
+p_data <- c("habib_cluster_name", "cell_id_stem") # Metadata that we want included in SC3 figures.
 ```
 
 ## Visualization
@@ -723,13 +724,13 @@ We can also assess the performance of our SC3 clusters using a correlation matri
 In an ideal situation, diagonal blocks will be completely red while off-diagonal elements are completely blue.
 
 ```{r}
-sc3_plot_consensus(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+sc3_plot_consensus(sce, k = all_ks, show_pdata = p_data)
 ```
 
 The diagonality of the concensus matrix can be quantitatively measured using a silhouette plot, where 1 represents a perfectly block-diagonal consensus matrix.
 
 ```{r}
-sc3_plot_silhouette(sce, k = 15)
+sc3_plot_silhouette(sce, k = all_ks)
 ```
 
 # Differential Expression
@@ -742,7 +743,7 @@ Though this figure does not describe DEGs, it is the first step of a DEG analysi
 The heatplot describes the absolute expression of each gene across the clusters.
 
 ```{r}
-sc3_plot_expression(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+sc3_plot_expression(sce, k = all_ks, show_pdata = p_data)
 ```
 
 ## Kruskal-Wallis
@@ -751,7 +752,7 @@ Our chosen method to calculate DEGs will be the non-parametric Kruskal-Wallis te
 The figure displays the top 50 DEGs where $p < 0.01$.
 
 ```{r}
-sc3_plot_de_genes(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+sc3_plot_de_genes(sce, k = all_ks, show_pdata = p_data)
 ```
 
 ## Marker Genes
@@ -761,7 +762,7 @@ Classifier prediction is then calculated using the gene expression ranks.
 Genes with $AUROC > 0.85$ and $p < 0.01$ are selected and the top 10 are visualized in the following figure.
 
 ```{r}
-sc3_plot_markers(sce, k = 15, show_pdata = c("habib_cluster_name", "cell_id_stem"))
+sc3_plot_markers(sce, k = all_ks, show_pdata = p_data)
 ```
 
 # References
