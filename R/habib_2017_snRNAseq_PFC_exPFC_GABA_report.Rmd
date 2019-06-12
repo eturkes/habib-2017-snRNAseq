@@ -1,5 +1,5 @@
 ---
-title:               "Habib 2017 snRNAseq Report"
+title:               "Habib 2017 snRNAseq PFC exPFC GABA Report"
 author:
   - name:            "Emir Turkes"
   - name:            "Columbia University"
@@ -19,7 +19,8 @@ output:
 knit:
   (function(inputFile, encoding) {
     rmarkdown::render(
-      inputFile, encoding = encoding, output_file = "../results/habib-2017-snRNAseq-report.html")})
+      inputFile, encoding = encoding,
+      output_file = "../results/habib-2017-snRNAseq-PFC-exPFC-GABA-report.html")})
 ---
 
 ```{r, include = FALSE}
@@ -142,8 +143,8 @@ A more elegant solution is planned, but for now, the desired regions/cell types 
 
 ```{r}
 # TODO: Simplify formatting requirements for the variables.
-regions <- "*"
-cell_types <- "exPFC1|exPFC2|exCA1|exCA3|GABA1|GABA2|exDG|ASC1|ASC2|ODC1|ODC2|OPC|MG|NSC|END"
+regions <- "*PFC*"
+cell_types <- "exPFC1|exPFC2|GABA1|GABA2"
 ```
 
 ### Counts
@@ -635,10 +636,10 @@ Now, we use various methods to generate new clusters.
 
 ## k-means
 
-We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 15-19 clusters.
+We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 2-4 clusters.
 
 ```{r, cache = TRUE}
-all_num_clust <- c(15:19)
+all_num_clust <- c(2:4)
 df_redDim <- df_redDim[ , !grepl("^KM_", names(df_redDim))]
 for (num_clust in all_num_clust) {
   cat(paste0("k-means with ", num_clust, " clusters.\n"))
@@ -652,15 +653,15 @@ for (num_clust in all_num_clust) {
 
 ## SC3
 
-As an alternative method, we generate another set of 15-19 clusters using SC3 [@kiselev_sc3_2017].
+As an alternative method, we generate another set of 2-4 clusters using SC3 [@kiselev_sc3_2017].
 
 ```{r, cache = TRUE}
 rowData(sce)$feature_symbol <- rowData(sce)$external_gene_name
-all_ks <- c(15:19)
+all_ks <- c(2:4)
 
 # Hybrid SVM approach
 # sce <- sc3(
-#   sce, gene_filter = FALSE, ks = all_ks, biology = TRUE, rand_seed = 100, svm_num_cells = 2000)
+#   sce, gene_filter = FALSE, ks = all_ks, biology = TRUE, rand_seed = 100, svm_num_cells = 500)
 # sce <- sc3_run_svm(sce, ks = all_ks)
 
 sce <- sc3(sce, ks = all_ks, biology = TRUE)
@@ -781,7 +782,7 @@ for (k in all_ks) {
 Our chosen method to calculate DEGs will be the non-parametric Kruskal-Wallis test.
 The figure displays the top 50 DEGs where $p < 0.01$.
 
-```{r}
+```{r, fig.height = 9}
 for (k in all_ks) {
   sc3_plot_de_genes(sce, k = k, show_pdata = p_data)}
 ```
@@ -790,11 +791,11 @@ for (k in all_ks) {
 
 To assign marker genes, a binary classifier is constructed based on the mean cluster expression value.
 Classifier prediction is then calculated using the gene expression ranks.
-Genes with $AUROC > 0.85$ and $p < 0.01$ are selected and the top 10 are visualized in the following figure.
+Genes with $AUROC > 0.1$ and $p < 1$ are selected and the top 10 are visualized in the following figure.
 
-```{r}
+```{r, fig.height = 7}
 for (k in all_ks) {
-  sc3_plot_markers(sce, k = k, show_pdata = p_data)}
+  sc3_plot_markers(sce, k = k, show_pdata = p_data, p.val = 1, auroc = 0.1)}
 ```
 
 # References
@@ -803,9 +804,9 @@ This is the concluding section of the document.
 Here we write relevant results to disk, output the `session_info`, and create a bibliography for works cited.
 
 ```{r}
-saveRDS(sce, file = file.path(results_dir, "data", "sce.rds"))
-saveRDS(sce_hvg, file = file.path(results_dir, "data", "sce_hvg.rds"))
-saveRDS(all_clust_res, file = file.path(results_dir, "data", "all_clust_res.rds"))
+saveRDS(sce, file = file.path(results_dir, "data", "PFC_exPFC_GABA_sce.rds"))
+saveRDS(sce_hvg, file = file.path(results_dir, "data", "PFC_exPFC_GABA_sce_hvg.rds"))
+saveRDS(all_clust_res, file = file.path(results_dir, "data", "PFC_exPFC_GABA_all_clust_res.rds"))
 ```
 
 ```{r}
