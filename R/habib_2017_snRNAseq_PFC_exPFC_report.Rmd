@@ -676,7 +676,7 @@ p_data <- c("habib_cluster_name", "cell_id_stem") # Metadata that we want includ
 ## Visualization
 
 Now we visualize the correlation between our two new cluster sets as well as the original clusters in @habib_massively_2017.
-We start by reading in Supplementary Table:10 from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
+We start by reading in Supplementary Table 10 from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
 
 ```{r}
 name_change <- function(data, orig_name, new_name) {
