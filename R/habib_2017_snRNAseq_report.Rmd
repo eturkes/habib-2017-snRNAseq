@@ -1,20 +1,20 @@
 ---
-title:               "Habib 2017 snRNAseq Report"
+title: "Habib 2017 snRNAseq Report"
 author:
-  - name:            "Emir Turkes"
-  - name:            "Columbia University"
-date:                '`r strftime(Sys.time(), format = "%B %d, %Y")`'
-bibliography:        "../habib-2017-snRNAseq.bib"
-biblio-style:        apalike
-link-citations:      true
+  - name: "Emir Turkes"
+  - name: "Columbia University"
+date: '`r strftime(Sys.time(), format = "%B %d, %Y")`'
+bibliography: "../habib-2017-snRNAseq.bib"
+biblio-style: apalike
+link-citations: true
 output:
   html_document:
     number_sections: true
-    theme:           lumen
-    toc:             true
-    toc_depth:       2
+    theme: lumen
+    toc: true
+    toc_depth: 2
     toc_float:
-      collapsed:     false
+      collapsed: false
       smooth_scroll: false
 knit:
   (function(inputFile, encoding) {
@@ -41,7 +41,7 @@ knit:
 #
 #    Emir Turkes can be contacted at emir.turkes@eturkes.com
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width = 8.5)
 ```
 
 <style type="text/css">
@@ -75,7 +75,7 @@ The source code and instructions for rerunning the analysis can be found at [git
 
 # ~~~ Breakdown of Methods ~~~ {-}
 
-The following top-level sections breakdown the methods used to perform the analysis.
+The following top-level sections break down the methods used to perform the analysis and only needs to be read if one is interested.
 We start by setting some global variables and loading in any required packages.
 
 ```{r}
@@ -498,7 +498,7 @@ plot(
   log10(attr(reducedDim(sce), "percentVar")), xlab = "PC",
   ylab = "log10(Proportion of Variance Explained)", pch = 20,
   cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
-abline(v = ncol(reducedDim(sce,"PCA")), lty = 2, col = "red")
+abline(v = ncol(reducedDim(sce, "PCA")), lty = 2, col = "red")
 plotPCA(sce)
 ```
 
