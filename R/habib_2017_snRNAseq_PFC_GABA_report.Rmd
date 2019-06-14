@@ -103,6 +103,7 @@ library(svd)
 library(Rtsne)
 library(S4Vectors)
 library(SC3)
+library(Seurat)
 ```
 
 # Original Data {.tabset}
@@ -671,6 +672,18 @@ for (one_ks in all_ks) {
   sc3_label <- paste0("sc3_", one_ks, "_clusters")
   df_redDim[[sc3_label]] <- as.factor(colData(sce)[, sc3_label])}
 p_data <- c("habib_cluster_name", "cell_id_stem") # Metadata that we want included in SC3 figures.
+```
+
+## Seurat
+
+It is possible to convert SCE objects into Seurat objects.
+We do so and then cluster using Seurat.
+
+```{r}
+# seurat <- as.Seurat(sce, counts = "counts", data = "logcounts")
+# all_genes <- rownames(seurat)
+# seurat <- ScaleData(seurat)
+# seurat <- RunPCA(seurat, features = VariableFeatures(object = seurat))
 ```
 
 ## Visualization
