@@ -1,0 +1,813 @@
+---
+title: "Habib 2017 snRNAseq PFC exPFC Report"
+author:
+  - name: "Emir Turkes"
+  - name: "Columbia University"
+date: '`r strftime(Sys.time(), format = "%B %d, %Y")`'
+bibliography: "../habib-2017-snRNAseq.bib"
+biblio-style: apalike
+link-citations: true
+output:
+  html_document:
+    number_sections: true
+    theme: lumen
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+knit:
+  (function(inputFile, encoding) {
+    rmarkdown::render(
+      inputFile, encoding = encoding,
+      output_file = "../results/habib-2017-snRNAseq-PFC-exPFC-report.html")})
+---
+
+```{r, include = FALSE}
+#    This file is part of habib-2017-snRNAseq.
+#    Copyright (C) 2019  Emir Turkes
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#    Emir Turkes can be contacted at emir.turkes@eturkes.com
+
+knitr::opts_chunk$set(fig.width = 8.5)
+```
+
+<style type="text/css">
+body {font-size: 16px;}
+h1.title {font-size: 35px;}
+h1 {font-size: 24px;}
+h2 {font-size: 22px;}
+h3 {font-size: 20px;}
+.toc-content {padding-left: 0px; padding-right: 0px;}
+div.tocify {width: 100%;}
+.tocify-subheader .tocify-item {font-size: 0.95em; padding-left: 25px; text-indent: 0;}
+div.main-container {max-width: none; width: 100%;}
+</style>
+
+*This is a broad initial analysis that prepares and characterizes the data for use in other projects.*
+
+The background for this data is as follows:
+
+- dbGaP Accession: [phs000424](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v7.p2).
+- Part of [GTEx](https://gtexportal.org/home/) and originally published in @habib_massively_2017.
+- Archived frozen adult human post-mortem tissue.
+- 19,550 nuclei, 1,683 genes, 2,187 transcripts.
+- 3 PFC samples, 4 hippocampus samples from 5 donors.
+
+This analysis was performed in R except where noted.
+The source code and instructions for rerunning the analysis can be found at [github.com/eturkes/habib-2017-snRNAseq](https://github.com/eturkes/habib-2017-snRNAseq).
+
+# Final Results
+
+**Read just this section for the final results of the analysis and a summary of the methods.**
+
+# ~~~ Breakdown of Methods ~~~ {-}
+
+The following top-level sections break down the methods used to perform the analysis and only needs to be read if one is interested.
+We start by setting some global variables and loading in any required packages.
+
+```{r}
+data_dir <- file.path(getwd(), "..", "data")
+assets_dir <- file.path(getwd(), "..", "assets")
+results_dir <- file.path(getwd(), "..", "results")
+```
+
+```{r}
+library(conflicted)
+library(devtools)
+library(data.table)
+library(DT)
+library(plyr)
+library(SingleCellExperiment)
+library(biomaRt)
+library(dplyr)
+library(SummarizedExperiment)
+library(DropletUtils)
+library(scater)
+library(scran)
+library(ggplot2)
+library(svd)
+library(Rtsne)
+library(S4Vectors)
+library(SC3)
+```
+
+# Original Data {.tabset}
+
+This section provides a brief look at the raw data before manipulation.
+
+## Counts
+
+```{r, cache = TRUE}
+counts <- fread(file.path(data_dir, "GTEx_droncseq_hip_pcf.umi_counts.txt.gz"), data.table = FALSE)
+```
+
+```{r}
+datatable(counts[1:5, 1:3])
+```
+
+## Clusters
+
+```{r}
+clust <- fread(file.path(data_dir, "GTEx_droncseq_hip_pcf.clusters.txt.gz"), data.table = FALSE)
+datatable(clust[1:5, ])
+```
+
+## tSNE
+
+```{r}
+tsne = fread(file.path(data_dir, "../data/GTEx_droncseq_hip_pcf.tsne.txt.gz"), data.table = FALSE)
+datatable(tsne[1:5, ])
+```
+
+# Preliminary Cleaning
+
+Here we provide more informative labels to things, subset to the regions/cell types we are interested in, and transform the data into more convenient formats for downstream analysis.
+
+## Relabeling and Subsetting {.tabset}
+
+A more elegant solution is planned, but for now, the desired regions/cell types can be set here.
+
+```{r}
+# TODO: Simplify formatting requirements for the variables.
+regions <- "*PFC*"
+cell_types <- "exPFC1|exPFC2"
+```
+
+### Counts
+
+```{r}
+rownames(counts) <- counts$V1
+counts <- as.matrix(counts[ , -1])
+
+# For subsetting regions.
+keep <- grep(regions, colnames(counts))
+counts <- counts[ , keep]
+
+datatable(counts[1:5, 1:3])
+```
+
+### Clusters
+
+```{r}
+names(clust) <- c("sample", "habib_cluster")
+
+# For subsetting regions.
+clust <- clust[keep, ]
+
+clust$habib_cluster <- as.factor(clust$habib_cluster)
+
+# Add cluster names from Supplementary Table 8 (nmeth.4407-S11.xlsx).
+# The last four clusters lack labels.
+cname = c(
+  "exPFC1", "exPFC2", "exCA1", "exCA3", "GABA1", "GABA2", "exDG", "ASC1",
+  "ASC2", "ODC1", "ODC2", "OPC", "MG", "NSC", "END", rep(NA, 4))
+ctype = c(
+  "exPFC", "exPFC", "exCA1", "exCA3", "GABA", "GABA", "exDG", "ASC",
+  "ASC", "ODC", "ODC", "OPC", "MG", "NSC", "END", rep(NA, 4))
+
+# Merge cluster names with clust.
+map_clust_name <- data.frame(
+  habib_cluster = as.factor(seq(19)),
+  habib_cluster_name = cname,
+  habib_cell_type = ctype,
+  stringsAsFactors = FALSE,
+  check.names = FALSE)
+
+# Must resolve masking conflict with intersect.
+clust <- join(
+  clust, map_clust_name, by = BiocGenerics::intersect(names(clust), names(map_clust_name)))
+
+# For subsetting cell type.
+ckeep <- grep(cell_types, clust$habib_cluster_name)
+clust <- clust[ckeep, ]
+counts <- counts[ , ckeep]
+
+part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
+col_dat <- data.frame(
+  sample = colnames(counts),
+  cell_id_stem = part_cell_id,
+  stringsAsFactors = FALSE,
+  check.names = FALSE)
+
+clust <- clust[match(col_dat$sample, clust$sample), ]
+datatable(clust[1:5, ])
+```
+
+### t-SNE
+
+```{r}
+names(tsne) = c("sample", paste0("habib_tsne", 1:2))
+
+# For subsetting regions.
+tsne <- tsne[keep, ]
+
+# For subsetting cell type.
+tsne <- tsne[ckeep, ]
+
+col_dat <- cbind(
+  col_dat, clust[ , names(clust) != "sample"], tsne[ , names(tsne) != "sample"])
+datatable(tsne[1:5, ])
+```
+
+## SingleCellExperiment
+
+The data is now sufficiently prepared to form a SingleCellExperiment (SCE) object.
+
+```{r}
+sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
+sce
+```
+
+## Gene Annotations
+
+To provide additional metadata, we generate annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
+
+```{r}
+# Due to issues with cache invalidation, we read in the saved RDS every time for now.
+gene_anno <- readRDS(file.path(assets_dir, "gene_anno.rds"))
+# ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
+# attr_string <- c(
+#   "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
+#   "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
+# gene_anno <- getBM(
+#   attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
+# saveRDS(gene_anno, file = file.path(assets_dir, "gene_anno.rds"))
+```
+
+Before merging it into the SCE object, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
+
+```{r}
+# Remove genes not in the RNAseq dataset.
+remove_genes <- which(!gene_anno$external_gene_name %in% rownames(sce))
+gene_anno <- gene_anno[-remove_genes, ]
+
+# Remove annotations to scaffolds, assembly patches, and alternative loci.
+chromosomes <- c(1:22, "X", "Y", "MT")
+gene_anno <- gene_anno[which(gene_anno$chromosome_name %in% chromosomes), ]
+
+# Remove duplicates.
+dup <- table(gene_anno$external_gene_name)
+dup <- sort(dup[dup > 1], decreasing = TRUE)
+dup <- which(gene_anno$external_gene_name %in% names(dup))
+gene_anno2 <- gene_anno[dup, ]
+gene_anno2 <- gene_anno2[which(gene_anno2$hgnc_symbol == gene_anno2$external_gene_name), ]
+gene_anno2 <- distinct(gene_anno2, external_gene_name, .keep_all = TRUE)
+gene_anno <- rbind(gene_anno[-dup, ], gene_anno2)
+
+# Remove missing.
+keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
+sce <- sce[keep_genes, ]
+```
+
+```{r}
+rowData(sce) <- gene_anno
+sce
+```
+
+# QC
+
+These sections assess and correct issues and irregularities in the dataset.
+
+## Low Quality Cells
+
+In order to remove droplets which do not contain a cell but are rather ambient RNA, we visualize the inflection point on a knee plot, as described originally in @macosko_highly_2015.
+Removal was then to be originally done using `emptyDrops` from the `DropletUtils` package, but due to an unresolved error (`no counts available to estimate the ambient profile`), we skip it.
+In any case, all 14,963 cells were used for the analysis in @habib_massively_2017.
+
+```{r}
+bc_rank <- barcodeRanks(counts(sce))
+uniq <- !duplicated(bc_rank$rank)
+par(mar = c(5, 4, 2, 1), bty = "n")
+plot(
+  bc_rank$rank[uniq], bc_rank$total[uniq], log = "xy", xlab = "Rank",
+  ylab = "Total UMI Count", cex = 0.5, cex.lab = 1.2)
+abline(h = bc_rank$inflection, col = "darkgreen", lty = 2, lwd = 2)
+abline(h = bc_rank$knee, col = "dodgerblue", lty = 2, lwd = 2)
+legend(
+  "left", legend = c("Inflection", "Knee"), bty = "n", col = c("darkgreen", "dodgerblue"),
+  lty = 2, cex = 1.2, lwd = 2)
+```
+
+```{r}
+# Commented out due to "no counts available to estimate the ambient profile" error.
+# set.seed(100)
+# e_out = emptyDrops(counts(sce))
+# datatable(e_out[1:5, ])
+```
+
+## Mito/Ribo Genes
+
+Using an annotation from [HGNC](https://www.genenames.org/), we first assess the mitochondrial/ribosomal gene population using histograms and scatter plots.
+
+```{r, cache = TRUE}
+ribo_genes <- read.table(
+  file.path(assets_dir, "ribo-genes.txt"), sep = "\t",
+  header = TRUE, stringsAsFactors = FALSE)
+is_mito <- which(rowData(sce)$chromosome_name == "MT")
+is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
+sce <- calculateQCMetrics(sce, feature_controls = list(Mt = is_mito, Ri = is_ribo))
+```
+
+```{r}
+par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
+hist(
+  log10(sce$total_counts), xlab = "log10(Library Sizes)", main = "",
+  breaks = 20, col = "grey80", ylab = "Number of Cells")
+hist(
+  log10(sce$total_features_by_counts), xlab = "log10(Number of Expressed Genes)", main = "",
+  breaks = 20, col = "grey80", ylab = "Number of Cells")
+hist(
+  sce$pct_counts_Ri, xlab = "Ribosomal Proportion Percentage", ylab = "Number of Cells",
+  breaks = 40, main = "", col = "grey80")
+hist(
+  sce$pct_counts_Mt, xlab = "Mitochondrial Proportion Percentage", ylab = "Number of Cells",
+  breaks = 80, main = "", col = "grey80")
+par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
+smoothScatter(
+  log10(sce$total_counts), log10(sce$total_features_by_counts),
+  xlab = "log10(Library Sizes)", ylab = "log10(Number of Expressed Genes)")
+smoothScatter(
+  log10(sce$total_counts), sce$pct_counts_Ri,
+  xlab = "log10(Library Sizes)", ylab = "Ribosomal Proportion Percentage")
+smoothScatter(
+  log10(sce$total_counts), sce$pct_counts_Mt,
+  xlab = "log10(Library Sizes)", ylab = "Mitochondrial Proportion Percentage")
+smoothScatter(
+  sce$pct_counts_Ri,sce$pct_counts_Mt, xlab = "Ribosomal Proportion Percentage",
+  ylab = "Mitochondrial Proportion Percentage")
+```
+
+We then use the `isOutlier` function from `scater` to remove the the mitochondrial/ribosomal genes.
+
+```{r}
+libsize_drop <- isOutlier(sce$total_counts, nmads = 3, type = "lower", log = TRUE)
+feature_drop <- isOutlier(sce$total_features_by_counts, nmads = 3, type = "lower", log = TRUE)
+mito_drop <- isOutlier(sce$pct_counts_Mt, nmads = 3, type = "higher")
+ribo_drop <- isOutlier(sce$pct_counts_Ri, nmads = 3, type = "higher")
+keep <- !(libsize_drop | feature_drop | mito_drop | ribo_drop)
+sce <- sce[ , keep]
+```
+
+## Lowly Expressed Genes
+
+As described in @habib_massively_2017,
+
+> Nuclei with less than 200 detected genes and less than 10,000 usable reads were filtered out.
+
+and
+
+> A gene is considered detected in a cell if it has at least two unique UMIs (transcripts) associated with it.
+For each analysis, genes were removed that were detected in less than 10 nuclei.
+
+From these descriptions we conclude that nuclei that have less than 200 genes in one or more UMIs should be removed.
+We start by first visualizing some gene-level summary statistics.
+
+```{r}
+par(mfrow = c(1, 3), mar = c(5, 4, 1, 1))
+hist(
+  log10(rowData(sce)$mean_counts + 1e-6), col = "grey80",  main = "",
+  breaks = 40, xlab = "log10(Average Number of UMI + 1e-6)")
+hist(
+  log10(rowData(sce)$n_cells_by_counts + 1), col = "grey80", main = "",
+  breaks = 40, xlab = "log10(Number of Expressed Cells + 1)")
+plot(
+  log10(rowData(sce)$mean_counts + 1e-6), pch = 16,
+  col = rgb(0, 0, 0, 0.4), log10(rowData(sce)$n_cells_by_counts + 1),
+  xlab = "log10(Average Number of UMI + 1e-6)", ylab = "log10(Number of Expressed Cells + 1)")
+```
+
+Then we remove genes as necessary.
+
+```{r}
+names(rowData(sce))[names(rowData(sce)) == "strand"] <- "strand_n" # Must be renamed due to error.
+n_genes <- colSums(counts(sce) >= 2)
+n_genes <- colSums(counts(sce) >= 1)
+n_cells <- rowSums(counts(sce) >= 2)
+sce <- sce[which(n_cells >= 10), ]
+```
+
+Finally, we plot the most highly expressed genes.
+
+```{r}
+par(mar = c(5, 4, 1, 1))
+od1 <- order(rowData(sce)$mean_counts, decreasing = TRUE)
+barplot(
+  rowData(sce)$mean_counts[od1[20:1]], las = 1, names.arg = rowData(sce)$hgnc_symbol[od1[20:1]],
+  horiz = TRUE, cex.names = 0.8, cex.axis = 0.8,
+  xlab = "Average Number of UMI")
+```
+
+## Normalization
+
+We use `computeSumFactors` from the `scran` package to perform normalization.
+This function uses a linear deconvolution system to account for expected variation across different cell types/sizes [@l_lun_pooling_2016].
+We also remove cells that have size factors from the function that are very small ($< 0.01$) or negative.
+To verify the validity of this method, we first plot each cell's size factor against their total counts.
+
+```{r, cache = TRUE}
+clusters <- quickCluster(sce, min.mean = 0.1, method = "igraph")
+sce <- computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
+```
+
+```{r}
+sce <- sce[ , which(sizeFactors(sce) > 0.01)]
+par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
+smoothScatter(
+  sce$total_counts, sizeFactors(sce), log = "xy", xlab = "Total Counts", ylab = "Size Factors")
+plot(
+  sce$total_counts, sizeFactors(sce), log = "xy", xlab = "Total Counts",
+  ylab = "Size Factors", cex = 0.3, pch = 20, col = rgb(0.1, 0.2, 0.7, 0.3))
+abline(h = 0.05)
+```
+
+As the two plots appear to be highly correlated, we go ahead and perform the normalization.
+
+```{r}
+sce <- normalize(sce)
+```
+
+# Dimensionality Reduction
+
+This section details steps taken to reduce the dimensionality of the dataset through methods like PCA, tSNE, UMAP, etc.
+
+## HVG
+
+We start by identifying highly variable genes (HVGs), which is the first step in many PCA/tSNE approaches.
+HVGs are those that exhibit a high amount of biological signal relative to background noise.
+First, let's visualize variability in our dataset.
+
+```{r, cache = TRUE}
+new_trend <- makeTechTrend(x = sce)
+```
+
+```{r}
+fit <- trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
+par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
+plot(
+  fit$mean, fit$var, pch = 20,
+  col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "log(Mean)", ylab = "Variance")
+curve(fit$trend(x), col = "orange", lwd = 2, add = TRUE)
+curve(new_trend(x), col = "red", lwd = 2, add = TRUE)
+legend(
+  "top", legend = c("Poisson Noise", "Observed Trend"), lty = 1,
+  lwd = 2, col = c("red", "orange"), bty = "n")
+```
+
+And then plot the HVGs themselves.
+
+```{r}
+fit$trend <- new_trend
+dec <- decomposeVar(fit = fit)
+top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
+plotExpression(sce, features = rownames(top_dec)[1:10])
+```
+
+## PCA
+
+We start by performing PCA on all of the genes rather than just HVGs using `denoisePCA` from the `scran` package.
+This function automatically selects PCs by modelling technical noise.
+
+```{r, cache = TRUE}
+sce <- denoisePCA(sce, technical = new_trend, approx = TRUE)
+```
+
+```{r}
+df_redDim <- data.frame(
+  colData(sce)[ , c(
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
+    "habib_cluster", "habib_cluster_name", "habib_cell_type")],
+  reducedDim(sce, "PCA")[ , 1:2],
+  stringsAsFactors = FALSE)
+rownames(df_redDim) <- NULL
+par(mfrow = c(1, 1))
+plot(
+  log10(attr(reducedDim(sce), "percentVar")), xlab = "PC",
+  ylab = "log10(Proportion of Variance Explained)", pch = 20,
+  cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
+abline(v = ncol(reducedDim(sce, "PCA")), lty = 2, col = "red")
+plotPCA(sce)
+```
+
+## tSNE {.tabset}
+
+We use several approaches to identify clusters using tSNE, so this section is broken down into multiple subsections, with each tab referring to a particular set of coordinates.
+Let's first define a function for consistant plotting throughout.
+
+```{r}
+ggplot_custom = function(data, x, y, col, type) {
+	gg <- ggplot(data, aes_string(x = x, y = y)) +
+		geom_point(size = 0.2, alpha = 0.6, aes_string(col = col)) +
+		theme_classic() + theme(legend.position = "bottom")
+	if (type == "cont") {
+		gg <- gg + scale_colour_gradient(low = "blue", high = "red")
+	} else if (type == "cat") {
+		gg <- gg + guides(color = guide_legend(override.aes = list(size = 3)))
+	}
+	gg}
+```
+
+### Habib
+
+As tSNE coordinates were released with the original dataset, we plot them here to replicate the results of @habib_massively_2017.
+
+```{r}
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "cell_id_stem", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2",
+  col = "log10_total_features_by_counts", type = "cont")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cell_type", type = "cat")
+```
+
+### New
+
+We also calculate and plot new t-SNE coordinates using all of the genes in the dataset.
+
+```{r, cache = TRUE}
+sce <- runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
+```
+
+```{r}
+tmp_df <- data.frame(reducedDim(sce, "TSNE"), stringsAsFactors = FALSE)
+rownames(tmp_df) <- NULL
+names(tmp_df) <- paste0("new_tsne", 1:2)
+df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
+rm(tmp_df)
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "cell_id_stem", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2",
+  col = "log10_total_features_by_counts", type = "cont")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat")
+ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cell_type", type = "cat")
+```
+
+### HVG
+
+Another way to cluster is by using the HVGs calculated earlier.
+First, we select the top 1,000 HVGs using their FDR and biological residual thresholds and visualize them below.
+
+```{r}
+dec1 <- dec
+dec1$bio[which(dec$bio < 1e-5)] <- 1e-5
+dec1$FDR[which(dec$FDR < 1e-100)] <- 1e-100
+par(mfrow = c(1, 2))
+hist(log10(dec1$bio), breaks = 100, main = "")
+hist(log10(dec1$FDR), breaks = 100, main = "")
+w2kp <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
+sce_hvg <- sce[w2kp, ]
+edat <- t(as.matrix(logcounts(sce_hvg)))
+edat <- scale(edat)
+```
+
+Next, we calculate PCs using the log-transformed normalized expression data.
+
+```{r, cache = TRUE}
+ppk <- propack.svd(edat, neig = 50)
+pca <- t(ppk$d*t(ppk$u))
+tmp_df <- data.frame(pca[ , 1:2], stringsAsFactors = FALSE)
+names(tmp_df) <- paste0("hvg_pc", seq(ncol(tmp_df)))
+df_hvg <- data.frame(
+  colData(sce)[ , c(
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
+    "habib_cluster", "habib_cluster_name", "habib_cell_type"
+  )],
+  tmp_df,
+  stringsAsFactors = FALSE)
+rownames(df_hvg) <- NULL
+```
+
+```{r, cache = TRUE}
+set.seed(100)
+tsne <- Rtsne(pca, pca = FALSE)
+```
+
+```{r}
+tmp_df <- data.frame(tsne$Y, stringsAsFactors = FALSE)
+names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
+df_hvg <- data.frame(df_hvg, tmp_df, stringsAsFactors = FALSE)
+```
+
+And finally, calculate the t-SNE plots.
+
+```{r}
+reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = tsne$Y)
+ggplot_custom(
+  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "cell_id_stem", type = "cat")
+ggplot_custom(
+  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2",
+  col = "log10_total_features_by_counts", type = "cont")
+ggplot_custom(
+  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster", type = "cat")
+ggplot_custom(
+  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat")
+ggplot_custom(
+  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cell_type", type = "cat")
+```
+
+# Clustering
+
+The above section simply altered the dimensionality or visualization of the previously established clusters in @habib_massively_2017.
+Now, we use various methods to generate new clusters.
+
+## k-means
+
+We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 2-4 clusters.
+
+```{r, cache = TRUE}
+all_num_clust <- c(2:4)
+df_redDim <- df_redDim[ , !grepl("^KM_", names(df_redDim))]
+for (num_clust in all_num_clust) {
+  cat(paste0("k-means with ", num_clust, " clusters.\n"))
+  kmeans_out <- kmeans(
+    reducedDim(sce, "PCA"), centers = num_clust, iter.max = 1e8,
+    nstart = 2500, algorithm = "MacQueen")
+  km_label <- paste0("km_", num_clust, "_clusters")
+  df_redDim[[km_label]] = as.factor(kmeans_out$cluster)
+}
+```
+
+## SC3
+
+As an alternative method, we generate another set of 2-4 clusters using SC3 [@kiselev_sc3_2017].
+
+```{r, cache = TRUE}
+rowData(sce)$feature_symbol <- rowData(sce)$external_gene_name
+all_ks <- c(2:4)
+
+# Hybrid SVM approach
+# sce <- sc3(
+#   sce, gene_filter = FALSE, ks = all_ks, biology = TRUE, rand_seed = 100, svm_num_cells = 500)
+# sce <- sc3_run_svm(sce, ks = all_ks)
+
+sce <- sc3(sce, ks = all_ks, biology = TRUE)
+```
+
+```{r}
+for (one_ks in all_ks) {
+  sc3_label <- paste0("sc3_", one_ks, "_clusters")
+  df_redDim[[sc3_label]] <- as.factor(colData(sce)[, sc3_label])}
+p_data <- c("habib_cluster_name", "cell_id_stem") # Metadata that we want included in SC3 figures.
+```
+
+## Visualization
+
+Now we visualize the correlation between our two new cluster sets as well as the original clusters in @habib_massively_2017.
+We start by reading in Supplementary Table:10 from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
+
+```{r}
+name_change <- function(data, orig_name, new_name) {
+	index = which(names(data) == orig_name)
+	if (length(index) > 0) {
+		names(data)[index] = new_name
+	}
+	data}
+custom_merge = function(x, y, mess = NULL, ...) {
+	if (!is.null(mess)) {
+		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
+		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
+	}
+	merge(x, y, by = BiocGenerics::intersect(names(x), names(y)), ...)} # Resolve masking conflict.
+
+tmp_lab <- read.table(
+  file.path(assets_dir, "cluster-num-label.txt"), sep = "\t",
+  header = TRUE, stringsAsFactors = FALSE)
+tmp_lab <- name_change(tmp_lab, "Name", "Cluster.Name")
+tmp_lab <- name_change(tmp_lab, "Name.1", "Cell_Type")
+
+tmp_res <- read.table(
+  file.path(assets_dir, "paper-cluster-res.txt"), sep = "\t", header = TRUE,
+  comment.char = "", stringsAsFactors = FALSE)
+tmp_res <- name_change(tmp_res, "X.Genes", "nGenes")
+tmp_res <- name_change(tmp_res, "X.Transcripts", "nTranscripts")
+
+tmp_res <- custom_merge(tmp_res, tmp_lab[ , c("Cluster.Name", "Cell_Type")], all.x = TRUE)
+
+# Merge into our data.
+df_redDim$Cell.ID <- colnames(sce)
+df_redDim$hvg_tsne1 <- df_hvg$hvg_tsne1
+df_redDim$hvg_tsne2 <- df_hvg$hvg_tsne2
+all_clust_res <- custom_merge(df_redDim, tmp_res)
+sc3_res <- data.frame(colData(sce)[ , paste0("sc3_", all_ks, "_clusters")], stringsAsFactors = FALSE)
+for (ks in all_ks) {
+  sc3_label <- paste0("sc3_", ks, "_clusters")
+  sc3_res[ , sc3_label] <- as.factor(sc3_res[ , sc3_label])}
+sc3_res$Cell.ID <- colnames(sce)
+all_clust_res <- custom_merge(all_clust_res, sc3_res)
+```
+
+### t-SNE {.tabset}
+
+We visualize our clusters using t-SNE, looking at both the HVG t-SNE generated earlier and coloring our clustering results atop of the clusters in @habib_massively_2017.
+
+```{r}
+all_vars = c(
+  "Cell_Type", paste0("km_", all_num_clust, "_clusters"), paste0("sc3_", all_ks, "_clusters"))
+```
+
+#### HVG
+
+```{r}
+for (one_var in all_vars) {
+  print(ggplot_custom(
+    data = all_clust_res, x = "hvg_tsne1", y = "hvg_tsne2", col = one_var, type = "cat"))}
+```
+
+#### Habib
+
+```{r}
+for (one_var in all_vars) {
+  print(ggplot_custom(
+    data = all_clust_res, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat"))}
+```
+
+### Consensus Matrix
+
+We can also assess the performance of our SC3 clusters using a correlation matrix.
+In an ideal situation, diagonal blocks will be completely red while off-diagonal elements are completely blue.
+
+```{r, cache = TRUE}
+for (k in all_ks) {
+  sc3_plot_consensus(sce, k = k, show_pdata = p_data)}
+```
+
+The diagonality of the concensus matrix can be quantitatively measured using a silhouette plot, where 1 represents a perfectly block-diagonal consensus matrix.
+
+```{r}
+# Commented out for now due to errors.
+# for (k in all_ks) {
+#   sc3_plot_silhouette(sce, k = k)}
+```
+
+# Differential Expression
+
+In this section, we calculate differentially expressed genes (DEGs) between the newly created clusters, eventually using this data to assign marker genes to each cluster.
+
+## Expression Matrix
+
+Though this figure does not describe DEGs, it is the first step of a DEG analysis.
+The heatplot describes the absolute expression of each gene across the clusters.
+
+```{r, cache = TRUE}
+for (k in all_ks) {
+  sc3_plot_expression(sce, k = k, show_pdata = p_data)}
+```
+
+## Kruskal-Wallis
+
+Our chosen method to calculate DEGs will be the non-parametric Kruskal-Wallis test.
+The figure displays the top 50 DEGs where $p < 0.01$.
+
+```{r, fig.height = 9}
+for (k in all_ks) {
+  sc3_plot_de_genes(sce, k = k, show_pdata = p_data)}
+```
+
+## Marker Genes
+
+To assign marker genes, a binary classifier is constructed based on the mean cluster expression value.
+Classifier prediction is then calculated using the gene expression ranks.
+Genes with $AUROC > 0.1$ and $p < 1$ are selected and the top 10 are visualized in the following figure.
+
+```{r, fig.height = 7}
+for (k in all_ks) {
+  sc3_plot_markers(sce, k = k, show_pdata = p_data, p.val = 1, auroc = 0.1)}
+```
+
+# References
+
+This is the concluding section of the document.
+Here we write relevant results to disk, output the `session_info`, and create a bibliography for works cited.
+
+```{r}
+saveRDS(sce, file = file.path(results_dir, "data", "PFC_exPFC_sce.rds"))
+saveRDS(sce_hvg, file = file.path(results_dir, "data", "PFC_exPFC_sce_hvg.rds"))
+saveRDS(all_clust_res, file = file.path(results_dir, "data", "PFC_exPFC_all_clust_res.rds"))
+```
+
+```{r}
+session_info()
+```
