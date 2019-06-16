@@ -120,12 +120,10 @@ untar(data, exdir = tempdir())
 
 ## Counts
 
-```{r, cache = TRUE}
+```{r}
 counts <- fread(
   file.path(tempdir(), data_str, paste0(data_str, ".umi_counts.txt.gz")), data.table = FALSE)
-```
 
-```{r}
 datatable(counts[1:5, 1:3])
 ```
 
@@ -147,27 +145,19 @@ datatable(tsne[1:5, ])
 
 # Preliminary Cleaning
 
-Here we provide more informative labels to things, subset to the regions/cell types we are interested in, and transform the data into more convenient formats for downstream analysis.
-
-## Relabeling and Subsetting {.tabset}
-
-A more elegant solution is planned, but for now, the desired regions/cell types can be set here.
-
-```{r}
-# TODO: Simplify formatting requirements for the variables.
-regions <- "*"
-cell_types <- "exPFC1|exPFC2|exCA1|exCA3|GABA1|GABA2|exDG|ASC1|ASC2|ODC1|ODC2|OPC|MG|NSC|END"
-```
+Here we do any data wrangling neccessary to transform the data into more convenient formats for downstream analysis.
 
 ### Counts
 
 ```{r}
 rownames(counts) <- counts$V1
 counts <- as.matrix(counts[ , -1])
-
-# For subsetting regions.
-keep <- grep(regions, colnames(counts))
-counts <- counts[ , keep]
+cell_id_stem <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
+col_dat <- data.frame(
+  sample = colnames(counts),
+  cell_id_stem = cell_id_stem,
+  stringsAsFactors = FALSE,
+  check.names = FALSE)
 
 datatable(counts[1:5, 1:3])
 ```
@@ -176,10 +166,6 @@ datatable(counts[1:5, 1:3])
 
 ```{r}
 names(clust) <- c("sample", "habib_cluster")
-
-# For subsetting regions.
-clust <- clust[keep, ]
-
 clust$habib_cluster <- as.factor(clust$habib_cluster)
 
 # Add cluster names from Supplementary Table 8 (nmeth.4407-S11.xlsx).
@@ -198,25 +184,10 @@ map_clust_name <- data.frame(
   habib_cell_type = ctype,
   stringsAsFactors = FALSE,
   check.names = FALSE)
-
-# Must resolve masking conflict with intersect.
 clust <- join(
   clust, map_clust_name, by = BiocGenerics::intersect(names(clust), names(map_clust_name)))
-
-# For subsetting cell type.
-ckeep <- grep(cell_types, clust$habib_cluster_name)
-clust <- clust[ckeep, ]
-counts <- counts[ , ckeep]
-
-# Moved from chunk 1.
-part_cell_id <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
-col_dat <- data.frame(
-  sample = colnames(counts),
-  cell_id_stem = part_cell_id,
-  stringsAsFactors = FALSE,
-  check.names = FALSE)
-
 clust <- clust[match(col_dat$sample, clust$sample), ]
+
 datatable(clust[1:5, ])
 ```
 
@@ -224,15 +195,9 @@ datatable(clust[1:5, ])
 
 ```{r}
 names(tsne) = c("sample", paste0("habib_tsne", 1:2))
-
-# For subsetting regions.
-tsne <- tsne[keep, ]
-
-# For subsetting cell type.
-tsne <- tsne[ckeep, ]
-
 col_dat <- cbind(
   col_dat, clust[ , names(clust) != "sample"], tsne[ , names(tsne) != "sample"])
+
 datatable(tsne[1:5, ])
 ```
 
