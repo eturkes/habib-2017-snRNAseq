@@ -24,6 +24,12 @@ Version: 2.44.0
 Hash: d093b23c65dff7945b1a4b92c58732f5
 Requires: BiocGenerics
 
+Package: BiocFileCache
+Source: Bioconductor
+Version: 1.8.0
+Hash: 687b387dc7f726352e0f86c75d072baf
+Requires: DBI, RSQLite, curl, dbplyr, dplyr, httr, rappdirs
+
 Package: BiocGenerics
 Source: Bioconductor
 Version: 0.30.0
@@ -422,6 +428,13 @@ Package: data.table
 Source: CRAN
 Version: 1.12.2
 Hash: b1642cf2ee0ab1d1b152ffacdb4401f7
+
+Package: dbplyr
+Source: CRAN
+Version: 1.4.1
+Hash: 7f94cc17bb126eeaf6cf40b54476e3ee
+Requires: DBI, R6, assertthat, dplyr, glue, purrr, rlang, tibble,
+    tidyselect
 
 Package: desc
 Source: CRAN
@@ -925,6 +938,11 @@ Source: CRAN
 Version: 0.3.2
 Hash: d7bb7f62bb3af2d6510f50cb7190a060
 Requires: magrittr, rlang
+
+Package: rappdirs
+Source: CRAN
+Version: 0.3.1
+Hash: 7340cfebc77ad7b107a549a8635e64dd
 
 Package: rcmdcheck
 Source: CRAN

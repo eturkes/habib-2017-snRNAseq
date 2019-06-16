@@ -79,6 +79,7 @@ The following top-level sections break down the methods used to perform the anal
 We start by setting some global variables and loading in any required packages.
 
 ```{r}
+data_str <- "GTEx_droncseq_hip_pcf"
 data_dir <- file.path(getwd(), "..", "data")
 assets_dir <- file.path(getwd(), "..", "assets")
 results_dir <- file.path(getwd(), "..", "results")
@@ -87,6 +88,7 @@ results_dir <- file.path(getwd(), "..", "results")
 ```{r}
 library(conflicted)
 library(devtools)
+library(BiocFileCache)
 library(data.table)
 library(DT)
 library(plyr)
@@ -108,10 +110,19 @@ library(SC3)
 
 This section provides a brief look at the raw data before manipulation.
 
+```{r}
+bfc <- BiocFileCache(data_dir, ask = FALSE)
+data <- bfcrpath(bfc, file.path(
+  "https://storage.googleapis.com/gtex_additional_datasets/single_cell_data",
+  paste0(data_str, ".tar")))
+untar(data, exdir = tempdir())
+```
+
 ## Counts
 
 ```{r, cache = TRUE}
-counts <- fread(file.path(data_dir, "GTEx_droncseq_hip_pcf.umi_counts.txt.gz"), data.table = FALSE)
+counts <- fread(
+  file.path(tempdir(), data_str, paste0(data_str, ".umi_counts.txt.gz")), data.table = FALSE)
 ```
 
 ```{r}
@@ -121,14 +132,16 @@ datatable(counts[1:5, 1:3])
 ## Clusters
 
 ```{r}
-clust <- fread(file.path(data_dir, "GTEx_droncseq_hip_pcf.clusters.txt.gz"), data.table = FALSE)
+clust <- fread(
+  file.path(tempdir(), data_str, paste0(data_str, ".clusters.txt.gz")), data.table = FALSE)
 datatable(clust[1:5, ])
 ```
 
 ## tSNE
 
 ```{r}
-tsne = fread(file.path(data_dir, "../data/GTEx_droncseq_hip_pcf.tsne.txt.gz"), data.table = FALSE)
+tsne <- fread(
+  file.path(tempdir(), data_str, paste0(data_str, ".tsne.txt.gz")), data.table = FALSE)
 datatable(tsne[1:5, ])
 ```
 
