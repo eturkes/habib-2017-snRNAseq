@@ -668,7 +668,7 @@ custom_merge = function(x, y, mess = NULL, ...) {
 		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
 		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
 	}
-	merge(x, y, by = BiocGenerics::intersect(names(x), names(y)), ...)} # Resolve masking conflict.
+	merge(x, y, by = BiocGenerics::intersect(names(x), names(y)), ...)}
 
 tmp_lab <- read.table(
   file.path(assets_dir, "cluster-num-label.txt"), sep = "\t",
