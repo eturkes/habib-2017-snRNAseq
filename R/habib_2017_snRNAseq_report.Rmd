@@ -76,15 +76,7 @@ The source code and instructions for rerunning the analysis can be found at [git
 # ~~~ Breakdown of Methods ~~~ {-}
 
 The following top-level sections break down the methods used to perform the analysis and only needs to be read if one is interested.
-We start by setting some global variables and loading in any required packages.
-
-```{r}
-data_str <- "GTEx_droncseq_hip_pcf"
-data_dir <- file.path(getwd(), "..", "data")
-assets_dir <- file.path(getwd(), "..", "assets")
-results_dir <- file.path(getwd(), "..", "results")
-set.seed(1)
-```
+We start by loading in any required packages and setting some global variables.
 
 ```{r}
 library(conflicted)
@@ -92,6 +84,7 @@ library(devtools)
 library(BiocFileCache)
 library(data.table)
 library(DT)
+library(Matrix)
 library(plyr)
 library(SingleCellExperiment)
 library(biomaRt)
@@ -105,6 +98,18 @@ library(svd)
 library(Rtsne)
 library(S4Vectors)
 library(SC3)
+```
+
+```{r}
+set.seed(1)
+
+data_str <- "GTEx_droncseq_hip_pcf"
+data_dir <- file.path(getwd(), "..", "data")
+assets_dir <- file.path(getwd(), "..", "assets")
+results_dir <- file.path(getwd(), "..", "results")
+
+conflict_prefer("which", "BiocGenerics")
+conflict_prefer("intersect", "BiocGenerics")
 ```
 
 # Original Data {.tabset}
@@ -163,7 +168,7 @@ col_dat <- data.frame(
 datatable(counts[1:5, 1:3])
 
 # Convert to dgCMatrix after datatable, as they are incompatible.
-counts <- Matrix::Matrix(counts, sparse = TRUE)
+counts <- Matrix(counts, sparse = TRUE)
 ```
 
 ### Clusters
@@ -189,7 +194,7 @@ map_clust_name <- data.frame(
   stringsAsFactors = FALSE,
   check.names = FALSE)
 clust <- join(
-  clust, map_clust_name, by = BiocGenerics::intersect(names(clust), names(map_clust_name)))
+  clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
 clust <- clust[match(col_dat$sample, clust$sample), ]
 
 datatable(clust[1:5, ])
@@ -417,7 +422,7 @@ if (file.exists(rds)) {
 
 rds <- file.path(assets_dir, "cache", "size_factors.rds")
 if (file.exists(rds)) {
-  clusters <- readRDS(rds)
+  size_factors <- readRDS(rds)
 } else {
   size_factors <- computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
   saveRDS(size_factors, rds)}
@@ -450,11 +455,8 @@ We start by identifying highly variable genes (HVGs), which is the first step in
 HVGs are those that exhibit a high amount of biological signal relative to background noise.
 First, let's visualize variability in our dataset.
 
-```{r, cache = TRUE}
-new_trend <- makeTechTrend(x = sce)
-```
-
 ```{r}
+new_trend <- makeTechTrend(x = sce)
 fit <- trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
 par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
 plot(
@@ -689,7 +691,7 @@ custom_merge = function(x, y, mess = NULL, ...) {
 		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
 		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
 	}
-	merge(x, y, by = BiocGenerics::intersect(names(x), names(y)), ...)}
+	merge(x, y, by = intersect(names(x), names(y)), ...)}
 
 tmp_lab <- read.table(
   file.path(assets_dir, "cache", "cluster-num-label.txt"), sep = "\t",
