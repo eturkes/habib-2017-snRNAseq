@@ -91,6 +91,7 @@ library(devtools)
 library(BiocFileCache)
 library(data.table)
 library(DT)
+library(Matrix)
 library(plyr)
 library(SingleCellExperiment)
 library(biomaRt)
@@ -160,6 +161,9 @@ col_dat <- data.frame(
   check.names = FALSE)
 
 datatable(counts[1:5, 1:3])
+
+# Convert to dgCMatrix after datatable, as they are incompatible.
+counts <- Matrix(counts, sparse = TRUE)
 ```
 
 ### Clusters
@@ -206,7 +210,12 @@ datatable(tsne[1:5, ])
 The data is now sufficiently prepared to form a SingleCellExperiment (SCE) object.
 
 ```{r}
-sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
+sce <- SingleCellExperiment(assays = list(counts = counts))
+
+# Clean up environment.
+rm(counts, clust, tsne)
+gc()
+
 sce
 ```
 
