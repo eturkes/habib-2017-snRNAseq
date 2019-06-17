@@ -83,6 +83,7 @@ data_str <- "GTEx_droncseq_hip_pcf"
 data_dir <- file.path(getwd(), "..", "data")
 assets_dir <- file.path(getwd(), "..", "assets")
 results_dir <- file.path(getwd(), "..", "results")
+set.seed(1)
 ```
 
 ```{r}
@@ -91,7 +92,6 @@ library(devtools)
 library(BiocFileCache)
 library(data.table)
 library(DT)
-library(Matrix)
 library(plyr)
 library(SingleCellExperiment)
 library(biomaRt)
@@ -163,7 +163,7 @@ col_dat <- data.frame(
 datatable(counts[1:5, 1:3])
 
 # Convert to dgCMatrix after datatable, as they are incompatible.
-counts <- Matrix(counts, sparse = TRUE)
+counts <- Matrix::Matrix(counts, sparse = TRUE)
 ```
 
 ### Clusters
@@ -224,15 +224,17 @@ sce
 To provide additional metadata, we generate annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
 
 ```{r}
-# Due to issues with cache invalidation, we read in the saved RDS every time for now.
-gene_anno <- readRDS(file.path(assets_dir, "gene_anno.rds"))
-# ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
-# attr_string <- c(
-#   "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
-#   "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
-# gene_anno <- getBM(
-#   attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
-# saveRDS(gene_anno, file = file.path(assets_dir, "gene_anno.rds"))
+rds <- file.path(assets_dir, "cache", "gene_anno.rds")
+if (file.exists(rds)) {
+  gene_anno <- readRDS(rds)
+} else {
+  ensembl <- useEnsembl(biomart = "ensembl", GRCh = 37, dataset = "hsapiens_gene_ensembl")
+  attr_string <- c(
+    "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
+    "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
+  gene_anno <- getBM(
+    attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
+  saveRDS(gene_anno, file = rds)}
 ```
 
 Before merging it into the SCE object, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
@@ -258,9 +260,7 @@ gene_anno <- rbind(gene_anno[-dup, ], gene_anno2)
 # Remove missing.
 keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
 sce <- sce[keep_genes, ]
-```
 
-```{r}
 rowData(sce) <- gene_anno
 sce
 ```
@@ -278,6 +278,7 @@ In any case, all 14,963 cells were used for the analysis in @habib_massively_201
 ```{r}
 bc_rank <- barcodeRanks(counts(sce))
 uniq <- !duplicated(bc_rank$rank)
+
 par(mar = c(5, 4, 2, 1), bty = "n")
 plot(
   bc_rank$rank[uniq], bc_rank$total[uniq], log = "xy", xlab = "Rank",
@@ -291,8 +292,13 @@ legend(
 
 ```{r}
 # Commented out due to "no counts available to estimate the ambient profile" error.
-# set.seed(100)
-# e_out = emptyDrops(counts(sce))
+# rds <- file.path(assets_dir, "cache", "e_out.rds")
+# if (file.exists(rds)) {
+#   e_out <- readRDS(rds)
+# } else {
+#   e_out <- emptyDrops(counts(sce))
+#   saveRDS(e_out, file = rds)}
+# 
 # datatable(e_out[1:5, ])
 ```
 
@@ -300,16 +306,14 @@ legend(
 
 Using an annotation from [HGNC](https://www.genenames.org/), we first assess the mitochondrial/ribosomal gene population using histograms and scatter plots.
 
-```{r, cache = TRUE}
+```{r}
 ribo_genes <- read.table(
-  file.path(assets_dir, "ribo-genes.txt"), sep = "\t",
+  file.path(assets_dir, "cache", "ribo-genes.txt"), sep = "\t",
   header = TRUE, stringsAsFactors = FALSE)
 is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
 sce <- calculateQCMetrics(sce, feature_controls = list(Mt = is_mito, Ri = is_ribo))
-```
 
-```{r}
 par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
 hist(
   log10(sce$total_counts), xlab = "log10(Library Sizes)", main = "",
@@ -326,16 +330,16 @@ hist(
 par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
 smoothScatter(
   log10(sce$total_counts), log10(sce$total_features_by_counts),
-  xlab = "log10(Library Sizes)", ylab = "log10(Number of Expressed Genes)")
+  xlab = "log10(Library Sizes)", ylab = "log10(Num. Expressed Genes)")
 smoothScatter(
   log10(sce$total_counts), sce$pct_counts_Ri,
-  xlab = "log10(Library Sizes)", ylab = "Ribosomal Proportion Percentage")
+  xlab = "log10(Library Sizes)", ylab = "Ribosomal Proportion %")
 smoothScatter(
   log10(sce$total_counts), sce$pct_counts_Mt,
-  xlab = "log10(Library Sizes)", ylab = "Mitochondrial Proportion Percentage")
+  xlab = "log10(Library Sizes)", ylab = "Mitochondrial Proportion %")
 smoothScatter(
-  sce$pct_counts_Ri,sce$pct_counts_Mt, xlab = "Ribosomal Proportion Percentage",
-  ylab = "Mitochondrial Proportion Percentage")
+  sce$pct_counts_Ri,sce$pct_counts_Mt, xlab = "Ribosomal Proportion %",
+  ylab = "Mitochondrial Proportion %")
 ```
 
 We then use the `isOutlier` function from `scater` to remove the the mitochondrial/ribosomal genes.
@@ -377,7 +381,7 @@ plot(
   xlab = "log10(Average Number of UMI + 1e-6)", ylab = "log10(Number of Expressed Cells + 1)")
 ```
 
-Then we remove genes as necessary.
+Then we remove genes as necessary and plot the most highly expressed genes.
 
 ```{r}
 names(rowData(sce))[names(rowData(sce)) == "strand"] <- "strand_n" # Must be renamed due to error.
@@ -385,17 +389,15 @@ n_genes <- colSums(counts(sce) >= 2)
 n_genes <- colSums(counts(sce) >= 1)
 n_cells <- rowSums(counts(sce) >= 2)
 sce <- sce[which(n_cells >= 10), ]
-```
 
-Finally, we plot the most highly expressed genes.
+rds <- file.path(assets_dir, "cache", "highest_exprs.rds")
+if (file.exists(rds)) {
+  highest_exprs <- readRDS(rds)
+} else {
+  highest_exprs <- plotHighestExprs(sce)
+  saveRDS(highest_exprs, file = rds)}
 
-```{r}
-par(mar = c(5, 4, 1, 1))
-od1 <- order(rowData(sce)$mean_counts, decreasing = TRUE)
-barplot(
-  rowData(sce)$mean_counts[od1[20:1]], las = 1, names.arg = rowData(sce)$hgnc_symbol[od1[20:1]],
-  horiz = TRUE, cex.names = 0.8, cex.axis = 0.8,
-  xlab = "Average Number of UMI")
+plotHighestExprs(sce)
 ```
 
 ## Normalization
@@ -405,13 +407,24 @@ This function uses a linear deconvolution system to account for expected variati
 We also remove cells that have size factors from the function that are very small ($< 0.01$) or negative.
 To verify the validity of this method, we first plot each cell's size factor against their total counts.
 
-```{r, cache = TRUE}
-clusters <- quickCluster(sce, min.mean = 0.1, method = "igraph")
-sce <- computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
-```
-
 ```{r}
+rds <- file.path(assets_dir, "cache", "clusters.rds")
+if (file.exists(rds)) {
+  clusters <- readRDS(rds)
+} else {
+  clusters <- quickCluster(sce, use.ranks = FALSE, method = "igraph")
+  saveRDS(clusters, rds)}
+
+rds <- file.path(assets_dir, "cache", "size_factors.rds")
+if (file.exists(rds)) {
+  clusters <- readRDS(rds)
+} else {
+  size_factors <- computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
+  saveRDS(size_factors, rds)}
+
+sce <- size_factors
 sce <- sce[ , which(sizeFactors(sce) > 0.01)]
+
 par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
 smoothScatter(
   sce$total_counts, sizeFactors(sce), log = "xy", xlab = "Total Counts", ylab = "Size Factors")
@@ -588,7 +601,6 @@ rownames(df_hvg) <- NULL
 ```
 
 ```{r, cache = TRUE}
-set.seed(100)
 tsne <- Rtsne(pca, pca = FALSE)
 ```
 
@@ -680,13 +692,13 @@ custom_merge = function(x, y, mess = NULL, ...) {
 	merge(x, y, by = BiocGenerics::intersect(names(x), names(y)), ...)}
 
 tmp_lab <- read.table(
-  file.path(assets_dir, "cluster-num-label.txt"), sep = "\t",
+  file.path(assets_dir, "cache", "cluster-num-label.txt"), sep = "\t",
   header = TRUE, stringsAsFactors = FALSE)
 tmp_lab <- name_change(tmp_lab, "Name", "Cluster.Name")
 tmp_lab <- name_change(tmp_lab, "Name.1", "Cell_Type")
 
 tmp_res <- read.table(
-  file.path(assets_dir, "paper-cluster-res.txt"), sep = "\t", header = TRUE,
+  file.path(assets_dir, "cache", "paper-cluster-res.txt"), sep = "\t", header = TRUE,
   comment.char = "", stringsAsFactors = FALSE)
 tmp_res <- name_change(tmp_res, "X.Genes", "nGenes")
 tmp_res <- name_change(tmp_res, "X.Transcripts", "nTranscripts")
