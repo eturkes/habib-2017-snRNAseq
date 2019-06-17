@@ -215,7 +215,7 @@ datatable(tsne[1:5, ])
 The data is now sufficiently prepared to form a SingleCellExperiment (SCE) object.
 
 ```{r}
-sce <- SingleCellExperiment(assays = list(counts = counts))
+sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
 
 # Clean up environment.
 rm(counts, clust, tsne)
@@ -228,7 +228,7 @@ sce
 
 To provide additional metadata, we generate annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
 
-```{r}
+```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "gene_anno.rds")
 if (file.exists(rds)) {
   gene_anno <- readRDS(rds)
@@ -295,7 +295,7 @@ legend(
   lty = 2, cex = 1.2, lwd = 2)
 ```
 
-```{r}
+```{r, cache = TRUE}
 # Commented out due to "no counts available to estimate the ambient profile" error.
 # rds <- file.path(assets_dir, "cache", "e_out.rds")
 # if (file.exists(rds)) {
@@ -303,7 +303,9 @@ legend(
 # } else {
 #   e_out <- emptyDrops(counts(sce))
 #   saveRDS(e_out, file = rds)}
-# 
+```
+
+```{r}
 # datatable(e_out[1:5, ])
 ```
 
@@ -395,13 +397,6 @@ n_genes <- colSums(counts(sce) >= 1)
 n_cells <- rowSums(counts(sce) >= 2)
 sce <- sce[which(n_cells >= 10), ]
 
-rds <- file.path(assets_dir, "cache", "highest_exprs.rds")
-if (file.exists(rds)) {
-  highest_exprs <- readRDS(rds)
-} else {
-  highest_exprs <- plotHighestExprs(sce)
-  saveRDS(highest_exprs, file = rds)}
-
 plotHighestExprs(sce)
 ```
 
@@ -412,21 +407,25 @@ This function uses a linear deconvolution system to account for expected variati
 We also remove cells that have size factors from the function that are very small ($< 0.01$) or negative.
 To verify the validity of this method, we first plot each cell's size factor against their total counts.
 
-```{r}
+```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "clusters.rds")
 if (file.exists(rds)) {
   clusters <- readRDS(rds)
 } else {
   clusters <- quickCluster(sce, use.ranks = FALSE, method = "igraph")
   saveRDS(clusters, rds)}
+```
 
+```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "size_factors.rds")
 if (file.exists(rds)) {
   size_factors <- readRDS(rds)
 } else {
   size_factors <- computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
   saveRDS(size_factors, rds)}
+```
 
+```{r}
 sce <- size_factors
 sce <- sce[ , which(sizeFactors(sce) > 0.01)]
 
@@ -484,10 +483,16 @@ We start by performing PCA on all of the genes rather than just HVGs using `deno
 This function automatically selects PCs by modelling technical noise.
 
 ```{r, cache = TRUE}
-sce <- denoisePCA(sce, technical = new_trend, approx = TRUE)
+rds <- file.path(assets_dir, "cache", "pca.rds")
+if (file.exists(rds)) {
+  pca <- readRDS(rds)
+} else {
+  pca <- denoisePCA(sce, technical = new_trend, approx = TRUE)
+  saveRDS(pca, rds)}
 ```
 
 ```{r}
+sce <- pca
 df_redDim <- data.frame(
   colData(sce)[ , c(
     "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
@@ -495,6 +500,7 @@ df_redDim <- data.frame(
   reducedDim(sce, "PCA")[ , 1:2],
   stringsAsFactors = FALSE)
 rownames(df_redDim) <- NULL
+
 par(mfrow = c(1, 1))
 plot(
   log10(attr(reducedDim(sce), "percentVar")), xlab = "PC",
