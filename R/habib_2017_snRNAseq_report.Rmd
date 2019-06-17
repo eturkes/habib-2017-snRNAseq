@@ -507,7 +507,7 @@ plot(
   ylab = "log10(Proportion of Variance Explained)", pch = 20,
   cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
 abline(v = ncol(reducedDim(sce, "PCA")), lty = 2, col = "red")
-plotPCA(sce)
+plotPCA(sce, ncomponents = 3, colour_by = "log10_total_features_by_counts")
 ```
 
 ## tSNE {.tabset}
@@ -551,15 +551,22 @@ ggplot_custom(
 We also calculate and plot new t-SNE coordinates using all of the genes in the dataset.
 
 ```{r, cache = TRUE}
-sce <- runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
+rds <- file.path(assets_dir, "cache", "tsne.rds")
+if (file.exists(rds)) {
+  tsne <- readRDS(rds)
+} else {
+  tsne <- runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
+  saveRDS(tsne, rds)}
 ```
 
 ```{r}
+sce <- tsne
 tmp_df <- data.frame(reducedDim(sce, "TSNE"), stringsAsFactors = FALSE)
 rownames(tmp_df) <- NULL
 names(tmp_df) <- paste0("new_tsne", 1:2)
 df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
 rm(tmp_df)
+
 ggplot_custom(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "cell_id_stem", type = "cat")
 ggplot_custom(
@@ -582,9 +589,11 @@ First, we select the top 1,000 HVGs using their FDR and biological residual thre
 dec1 <- dec
 dec1$bio[which(dec$bio < 1e-5)] <- 1e-5
 dec1$FDR[which(dec$FDR < 1e-100)] <- 1e-100
+
 par(mfrow = c(1, 2))
 hist(log10(dec1$bio), breaks = 100, main = "")
 hist(log10(dec1$FDR), breaks = 100, main = "")
+
 w2kp <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
 sce_hvg <- sce[w2kp, ]
 edat <- t(as.matrix(logcounts(sce_hvg)))
@@ -594,7 +603,15 @@ edat <- scale(edat)
 Next, we calculate PCs using the log-transformed normalized expression data.
 
 ```{r, cache = TRUE}
-ppk <- propack.svd(edat, neig = 50)
+rds <- file.path(assets_dir, "cache", "ppk.rds")
+if (file.exists(rds)) {
+  ppk <- readRDS(rds)
+} else {
+  ppk <- propack.svd(edat, neig = 50)
+  saveRDS(ppk, rds)}
+```
+
+```{r}
 pca <- t(ppk$d*t(ppk$u))
 tmp_df <- data.frame(pca[ , 1:2], stringsAsFactors = FALSE)
 names(tmp_df) <- paste0("hvg_pc", seq(ncol(tmp_df)))
@@ -609,19 +626,24 @@ rownames(df_hvg) <- NULL
 ```
 
 ```{r, cache = TRUE}
-tsne <- Rtsne(pca, pca = FALSE)
+rds <- file.path(assets_dir, "cache", "new_tsne.rds")
+if (file.exists(rds)) {
+  new_tsne <- readRDS(rds)
+} else {
+  new_tsne <- Rtsne(pca, pca = FALSE)
+  saveRDS(new_tsne, rds)}
 ```
 
 ```{r}
-tmp_df <- data.frame(tsne$Y, stringsAsFactors = FALSE)
+tmp_df <- data.frame(new_tsne$Y, stringsAsFactors = FALSE)
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df, stringsAsFactors = FALSE)
+reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = new_tsne$Y)
 ```
 
 And finally, calculate the t-SNE plots.
 
 ```{r}
-reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = tsne$Y)
 ggplot_custom(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "cell_id_stem", type = "cat")
 ggplot_custom(
@@ -644,17 +666,28 @@ Now, we use various methods to generate new clusters.
 
 We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 15-19 clusters.
 
-```{r, cache = TRUE}
+```{r}
 all_num_clust <- c(15:19)
 df_redDim <- df_redDim[ , !grepl("^KM_", names(df_redDim))]
-for (num_clust in all_num_clust) {
-  cat(paste0("k-means with ", num_clust, " clusters.\n"))
-  kmeans_out <- kmeans(
-    reducedDim(sce, "PCA"), centers = num_clust, iter.max = 1e8,
-    nstart = 2500, algorithm = "MacQueen")
-  km_label <- paste0("km_", num_clust, "_clusters")
-  df_redDim[[km_label]] = as.factor(kmeans_out$cluster)
-}
+```
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "kmeans_out.rds")
+if (file.exists(rds)) {
+  kmeans_out <- readRDS(rds)
+  km_label <- readRDS(file.path(assets_dir, "cache", "km_label.rds"))
+  df_redDim <- readRDS(file.path(assets_dir, "cache", "df_redDim_km.rds"))
+} else {
+  for (num_clust in all_num_clust) {
+    cat(paste0("k-means with ", num_clust, " clusters.\n"))
+    kmeans_out <- kmeans(
+      reducedDim(sce, "PCA"), centers = num_clust, iter.max = 1e8,
+      nstart = 2500, algorithm = "MacQueen")
+    km_label <- paste0("km_", num_clust, "_clusters")
+    df_redDim[[km_label]] = as.factor(kmeans_out$cluster)}
+  saveRDS(kmeans_out, rds)
+  saveRDS(km_label, file.path(assets_dir, "cache", "km_label.rds"))
+  saveRDS(df_redDim, file.path(assets_dir, "cache", "df_redDim_km.rds"))}
 ```
 
 ## SC3
