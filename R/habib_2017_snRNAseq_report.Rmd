@@ -122,6 +122,7 @@ data <- bfcrpath(bfc, file.path(
   "https://storage.googleapis.com/gtex_additional_datasets/single_cell_data",
   paste0(data_str, ".tar")))
 untar(data, exdir = tempdir())
+rm(bfc)
 ```
 
 ## Counts
@@ -166,9 +167,6 @@ col_dat <- data.frame(
   check.names = FALSE)
 
 datatable(counts[1:5, 1:3])
-
-# Convert to dgCMatrix after datatable, as they are incompatible.
-counts <- Matrix(counts, sparse = TRUE)
 ```
 
 ### Clusters
@@ -195,6 +193,7 @@ map_clust_name <- data.frame(
   check.names = FALSE)
 clust <- join(
   clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
+rm(map_clust_name)
 clust <- clust[match(col_dat$sample, clust$sample), ]
 
 datatable(clust[1:5, ])
@@ -216,11 +215,7 @@ The data is now sufficiently prepared to form a SingleCellExperiment (SCE) objec
 
 ```{r}
 sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
-
-# Clean up environment.
-rm(counts, clust, tsne)
-gc()
-
+rm(counts, clust, tsne, col_dat)
 sce
 ```
 
@@ -267,6 +262,7 @@ keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
 sce <- sce[keep_genes, ]
 
 rowData(sce) <- gene_anno
+rm(gene_anno, gene_anno2)
 sce
 ```
 
@@ -293,6 +289,8 @@ abline(h = bc_rank$knee, col = "dodgerblue", lty = 2, lwd = 2)
 legend(
   "left", legend = c("Inflection", "Knee"), bty = "n", col = c("darkgreen", "dodgerblue"),
   lty = 2, cex = 1.2, lwd = 2)
+
+rm(bc_rank)
 ```
 
 ```{r, cache = TRUE}
@@ -319,6 +317,7 @@ ribo_genes <- read.table(
   header = TRUE, stringsAsFactors = FALSE)
 is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
+rm(ribo_genes)
 sce <- calculateQCMetrics(sce, feature_controls = list(Mt = is_mito, Ri = is_ribo))
 
 par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
@@ -427,6 +426,7 @@ if (file.exists(rds)) {
 
 ```{r}
 sce <- size_factors
+rm(size_factors)
 sce <- sce[ , which(sizeFactors(sce) > 0.01)]
 
 par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
@@ -473,8 +473,10 @@ And then plot the HVGs themselves.
 ```{r}
 fit$trend <- new_trend
 dec <- decomposeVar(fit = fit)
+rm(fit)
 top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
 plotExpression(sce, features = rownames(top_dec)[1:10])
+rm(top_dec)
 ```
 
 ## PCA
@@ -565,7 +567,7 @@ tmp_df <- data.frame(reducedDim(sce, "TSNE"), stringsAsFactors = FALSE)
 rownames(tmp_df) <- NULL
 names(tmp_df) <- paste0("new_tsne", 1:2)
 df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
-rm(tmp_df)
+rm(tmp_df, tsne)
 
 ggplot_custom(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "cell_id_stem", type = "cat")
@@ -595,6 +597,7 @@ hist(log10(dec1$bio), breaks = 100, main = "")
 hist(log10(dec1$FDR), breaks = 100, main = "")
 
 w2kp <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
+rm(dec, dec1)
 sce_hvg <- sce[w2kp, ]
 edat <- t(as.matrix(logcounts(sce_hvg)))
 edat <- scale(edat)
@@ -612,6 +615,7 @@ if (file.exists(rds)) {
 ```
 
 ```{r}
+rm(edat)
 pca <- t(ppk$d*t(ppk$u))
 tmp_df <- data.frame(pca[ , 1:2], stringsAsFactors = FALSE)
 names(tmp_df) <- paste0("hvg_pc", seq(ncol(tmp_df)))
@@ -639,6 +643,7 @@ tmp_df <- data.frame(new_tsne$Y, stringsAsFactors = FALSE)
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df, stringsAsFactors = FALSE)
 reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = new_tsne$Y)
+rm(new_tsne, pca, tmp_df, sce_hvg)
 ```
 
 And finally, calculate the t-SNE plots.
@@ -672,10 +677,9 @@ df_redDim <- df_redDim[ , !grepl("^KM_", names(df_redDim))]
 ```
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "kmeans_out.rds")
+rds <- file.path(assets_dir, "cache", "km_label.rds")
 if (file.exists(rds)) {
-  kmeans_out <- readRDS(rds)
-  km_label <- readRDS(file.path(assets_dir, "cache", "km_label.rds"))
+  km_label <- readRDS(rds)
   df_redDim <- readRDS(file.path(assets_dir, "cache", "df_redDim_km.rds"))
 } else {
   for (num_clust in all_num_clust) {
@@ -684,9 +688,9 @@ if (file.exists(rds)) {
       reducedDim(sce, "PCA"), centers = num_clust, iter.max = 1e8,
       nstart = 2500, algorithm = "MacQueen")
     km_label <- paste0("km_", num_clust, "_clusters")
-    df_redDim[[km_label]] = as.factor(kmeans_out$cluster)}
-  saveRDS(kmeans_out, rds)
-  saveRDS(km_label, file.path(assets_dir, "cache", "km_label.rds"))
+    df_redDim[[km_label]] = as.factor(kmeans_out$cluster)
+    rm(kmeans_out)}
+  saveRDS(km_label, rds)
   saveRDS(df_redDim, file.path(assets_dir, "cache", "df_redDim_km.rds"))}
 ```
 
@@ -694,19 +698,23 @@ if (file.exists(rds)) {
 
 As an alternative method, we generate another set of 15-19 clusters using SC3 [@kiselev_sc3_2017].
 
-```{r, cache = TRUE}
+```{r}
 rowData(sce)$feature_symbol <- rowData(sce)$external_gene_name
 all_ks <- c(15:19)
+```
 
-# Hybrid SVM approach
-# sce <- sc3(
-#   sce, gene_filter = FALSE, ks = all_ks, biology = TRUE, rand_seed = 100, svm_num_cells = 2000)
-# sce <- sc3_run_svm(sce, ks = all_ks)
-
-sce <- sc3(sce, ks = all_ks, biology = TRUE)
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "sc3_out.rds")
+if (file.exists(rds)) {
+  sc3_out <- readRDS(rds)
+} else {
+  sc3_out <- sc3(sce, ks = all_ks, biology = TRUE)
+  saveRDS(sc3_out, rds)}
 ```
 
 ```{r}
+sce <- sc3_out
+rm(sc3_out)
 for (one_ks in all_ks) {
   sc3_label <- paste0("sc3_", one_ks, "_clusters")
   df_redDim[[sc3_label]] <- as.factor(colData(sce)[, sc3_label])}
@@ -738,25 +746,26 @@ tmp_lab <- read.table(
 tmp_lab <- name_change(tmp_lab, "Name", "Cluster.Name")
 tmp_lab <- name_change(tmp_lab, "Name.1", "Cell_Type")
 
-tmp_res <- read.table(
-  file.path(assets_dir, "cache", "paper-cluster-res.txt"), sep = "\t", header = TRUE,
+tmp_clust <- read.table(
+  file.path(assets_dir, "cache", "paper-cluster.txt"), sep = "\t", header = TRUE,
   comment.char = "", stringsAsFactors = FALSE)
-tmp_res <- name_change(tmp_res, "X.Genes", "nGenes")
-tmp_res <- name_change(tmp_res, "X.Transcripts", "nTranscripts")
+tmp_clust <- name_change(tmp_clust, "X.Genes", "nGenes")
+tmp_clust <- name_change(tmp_clust, "X.Transcripts", "nTranscripts")
 
-tmp_res <- custom_merge(tmp_res, tmp_lab[ , c("Cluster.Name", "Cell_Type")], all.x = TRUE)
+tmp_clust <- custom_merge(tmp_clust, tmp_lab[ , c("Cluster.Name", "Cell_Type")], all.x = TRUE)
 
 # Merge into our data.
 df_redDim$Cell.ID <- colnames(sce)
 df_redDim$hvg_tsne1 <- df_hvg$hvg_tsne1
 df_redDim$hvg_tsne2 <- df_hvg$hvg_tsne2
-all_clust_res <- custom_merge(df_redDim, tmp_res)
-sc3_res <- data.frame(colData(sce)[ , paste0("sc3_", all_ks, "_clusters")], stringsAsFactors = FALSE)
+all_clust <- custom_merge(df_redDim, tmp_clust)
+tmp_sc3 <- data.frame(colData(sce)[ , paste0("sc3_", all_ks, "_clusters")], stringsAsFactors = FALSE)
 for (ks in all_ks) {
   sc3_label <- paste0("sc3_", ks, "_clusters")
-  sc3_res[ , sc3_label] <- as.factor(sc3_res[ , sc3_label])}
-sc3_res$Cell.ID <- colnames(sce)
-all_clust_res <- custom_merge(all_clust_res, sc3_res)
+  tmp_sc3[ , sc3_label] <- as.factor(tmp_sc3[ , sc3_label])}
+tmp_sc3$Cell.ID <- colnames(sce)
+all_clust <- custom_merge(all_clust, tmp_sc3)
+rm(tmp_sc3, df_redDim, df_hvg, tmp_clust, tmp_lab)
 ```
 
 ### t-SNE {.tabset}
@@ -764,7 +773,7 @@ all_clust_res <- custom_merge(all_clust_res, sc3_res)
 We visualize our clusters using t-SNE, looking at both the HVG t-SNE generated earlier and coloring our clustering results atop of the clusters in @habib_massively_2017.
 
 ```{r}
-all_vars = c(
+all_vars <- c(
   "Cell_Type", paste0("km_", all_num_clust, "_clusters"), paste0("sc3_", all_ks, "_clusters"))
 ```
 
@@ -773,7 +782,7 @@ all_vars = c(
 ```{r}
 for (one_var in all_vars) {
   print(ggplot_custom(
-    data = all_clust_res, x = "hvg_tsne1", y = "hvg_tsne2", col = one_var, type = "cat"))}
+    data = all_clust, x = "hvg_tsne1", y = "hvg_tsne2", col = one_var, type = "cat"))}
 ```
 
 #### Habib
@@ -781,60 +790,7 @@ for (one_var in all_vars) {
 ```{r}
 for (one_var in all_vars) {
   print(ggplot_custom(
-    data = all_clust_res, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat"))}
-```
-
-### Consensus Matrix
-
-We can also assess the performance of our SC3 clusters using a correlation matrix.
-In an ideal situation, diagonal blocks will be completely red while off-diagonal elements are completely blue.
-
-```{r, cache = TRUE}
-for (k in all_ks) {
-  sc3_plot_consensus(sce, k = k, show_pdata = p_data)}
-```
-
-The diagonality of the concensus matrix can be quantitatively measured using a silhouette plot, where 1 represents a perfectly block-diagonal consensus matrix.
-
-```{r}
-# Commented out for now due to errors.
-# for (k in all_ks) {
-#   sc3_plot_silhouette(sce, k = k)}
-```
-
-# Differential Expression
-
-In this section, we calculate differentially expressed genes (DEGs) between the newly created clusters, eventually using this data to assign marker genes to each cluster.
-
-## Expression Matrix
-
-Though this figure does not describe DEGs, it is the first step of a DEG analysis.
-The heatplot describes the absolute expression of each gene across the clusters.
-
-```{r, cache = TRUE}
-for (k in all_ks) {
-  sc3_plot_expression(sce, k = k, show_pdata = p_data)}
-```
-
-## Kruskal-Wallis
-
-Our chosen method to calculate DEGs will be the non-parametric Kruskal-Wallis test.
-The figure displays the top 50 DEGs where $p < 0.01$.
-
-```{r}
-for (k in all_ks) {
-  sc3_plot_de_genes(sce, k = k, show_pdata = p_data)}
-```
-
-## Marker Genes
-
-To assign marker genes, a binary classifier is constructed based on the mean cluster expression value.
-Classifier prediction is then calculated using the gene expression ranks.
-Genes with $AUROC > 0.85$ and $p < 0.01$ are selected and the top 10 are visualized in the following figure.
-
-```{r}
-for (k in all_ks) {
-  sc3_plot_markers(sce, k = k, show_pdata = p_data)}
+    data = all_clust, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat"))}
 ```
 
 # References
@@ -844,8 +800,7 @@ Here we write relevant results to disk, output the `session_info`, and create a 
 
 ```{r}
 saveRDS(sce, file = file.path(results_dir, "data", "sce.rds"))
-saveRDS(sce_hvg, file = file.path(results_dir, "data", "sce_hvg.rds"))
-saveRDS(all_clust_res, file = file.path(results_dir, "data", "all_clust_res.rds"))
+saveRDS(all_clust, file = file.path(results_dir, "data", "all_clust.rds"))
 ```
 
 ```{r}
