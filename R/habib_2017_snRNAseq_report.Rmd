@@ -692,37 +692,44 @@ Now we visualize the correlation between our new cluster set as well as the orig
 We start by reading in Supplementary Table 7 (nmeth.4407-S10.xlsx) from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
 
 ```{r}
-# # Define custom functions.
-# name_change <- function(data, orig_name, new_name) {
-# 	index = which(names(data) == orig_name)
-# 	if (length(index) > 0) {
-# 		names(data)[index] = new_name
-# 	}
-# 	data}
-# custom_merge = function(x, y, mess = NULL, ...) {
-# 	if (!is.null(mess)) {
-# 		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
-# 		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
-# 	}
-# 	merge(x, y, by = intersect(names(x), names(y)), ...)}
-# 
-# # Read in supplemental information.
-# tmp_lab <- read.table(
-#   file.path(assets_dir, "cluster-num-label.txt"), sep = "\t", header = TRUE, stringsAsFactors = FALSE)
-# tmp_lab <- name_change(tmp_lab, "Name", "habib_cluster_name")
-# tmp_lab <- name_change(tmp_lab, "Name.1", "habib_cell_type")
-# tmp_clust <- read.table(
-#   file.path(assets_dir, "paper-cluster.txt"), sep = "\t", header = TRUE,
-#   comment.char = "", stringsAsFactors = FALSE)
-# tmp_clust <- name_change(tmp_clust, "X.Genes", "n_genes")
-# tmp_clust <- name_change(tmp_clust, "X.Transcripts", "n_transcripts")
-# tmp_clust <- custom_merge(
-#   tmp_clust, tmp_lab[ , c("habib_cluster_name", "habib_cell_type")], all.x = TRUE)
-# 
-# # Merge into our data.
-# df_hvg$cell_id <- colnames(sce_hvg)
-# all_clust <- custom_merge(df_hvg, tmp_clust)
-# rm(df_redDim, df_hvg, tmp_clust, tmp_lab)
+# Define custom functions.
+name_change <- function(data, orig_name, new_name) {
+	index = which(names(data) == orig_name)
+	if (length(index) > 0) {
+		names(data)[index] = new_name
+	}
+	data}
+
+custom_merge = function(x, y, mess = NULL, ...) {
+	if (!is.null(mess)) {
+		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
+		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
+	}
+	merge(x, y, by = intersect(names(x), names(y)), ...)}
+
+# Read in supplemental information.
+tmp_lab <- read.table(
+  file.path(assets_dir, "cluster-num-label.txt"), sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+tmp_lab <- name_change(tmp_lab, "Name", "habib_cluster_name")
+tmp_lab <- name_change(tmp_lab, "Name.1", "habib_cell_type")
+tmp_lab <- name_change(tmp_lab, "Cell.ID", "sample")
+tmp_lab <- name_change(tmp_lab, "Cell.Type.ID", "habib_cluster")
+
+tmp_clust <- read.table(
+  file.path(assets_dir, "paper-cluster.txt"), sep = "\t", header = TRUE,
+  comment.char = "", stringsAsFactors = FALSE)
+tmp_clust <- name_change(tmp_clust, "X.Genes", "n_genes")
+tmp_clust <- name_change(tmp_clust, "X.Transcripts", "n_transcripts")
+tmp_clust <- name_change(tmp_clust, "Cell.ID", "sample")
+tmp_clust <- name_change(tmp_clust, "Cluster.ID", "habib_cluster")
+tmp_clust <- name_change(tmp_clust, "Cluster.Name", "habib_cluster_name")
+
+tmp_clust <- custom_merge(
+  tmp_clust, tmp_lab[ , c("habib_cluster_name", "habib_cell_type")], all.x = TRUE)
+
+# Merge into our data.
+all_clust <- custom_merge(df_hvg, tmp_clust)
+rm(df_hvg, tmp_clust, tmp_lab)
 ```
 
 ### tSNE {.tabset}
@@ -730,23 +737,23 @@ We start by reading in Supplementary Table 7 (nmeth.4407-S10.xlsx) from @habib_m
 We visualize our clusters using tSNE, looking at both the HVG tSNE generated earlier and coloring our clustering results atop of the clusters in @habib_massively_2017.
 
 ```{r}
-# all_vars <- c("habib_cell_type", "habib_cluster_name", paste0("km_", all_num_clust, "_clusters"))
+all_vars <- c("habib_cell_type", "habib_cluster_name", paste0("km_", all_num_clust, "_clusters"))
 ```
 
 #### HVG
 
 ```{r}
-# for (one_var in all_vars) {
-#   print(ggplot_custom(
-#     data = all_clust, x = "hvg_tsne1", y = "hvg_tsne2", col = one_var, type = "cat"))}
+for (var in all_vars) {
+  print(ggplot_custom(
+    data = all_clust, x = "hvg_tsne1", y = "hvg_tsne2", col = var, type = "cat"))}
 ```
 
 #### Habib
 
 ```{r}
-# for (one_var in all_vars) {
-#   print(ggplot_custom(
-#     data = all_clust, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat"))}
+for (var in all_vars) {
+  print(ggplot_custom(
+    data = all_clust, x = "habib_tsne1", y = "habib_tsne2", col = var, type = "cat"))}
 ```
 
 # References
@@ -757,7 +764,7 @@ Here we write relevant results to disk, output the `session_info`, and create a 
 ```{r}
 saveRDS(sce, file.path(results_dir, "data", "sce.rds"))
 saveRDS(sce_hvg, file.path(results_dir, "data", "sce_hvg.rds"))
-# saveRDS(all_clust, file.path(results_dir, "data", "all_clust.rds"))
+saveRDS(all_clust, file.path(results_dir, "data", "all_clust.rds"))
 ```
 
 ```{r}
