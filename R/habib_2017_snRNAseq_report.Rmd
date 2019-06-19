@@ -41,7 +41,7 @@ knit:
 #
 #    Emir Turkes can be contacted at emir.turkes@eturkes.com
 
-knitr::opts_chunk$set(fig.width = 8.5)
+knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7, error = TRUE)
 ```
 
 <style type="text/css">
@@ -93,16 +93,15 @@ library(SummarizedExperiment)
 library(DropletUtils)
 library(scater)
 library(scran)
+library(BiocSingular)
 library(ggplot2)
+library(plotly)
 library(svd)
 library(Rtsne)
 library(S4Vectors)
-library(SC3)
 ```
 
 ```{r}
-set.seed(1)
-
 data_str <- "GTEx_droncseq_hip_pcf"
 data_dir <- file.path(getwd(), "..", "data")
 assets_dir <- file.path(getwd(), "..", "assets")
@@ -121,8 +120,8 @@ bfc <- BiocFileCache(data_dir, ask = FALSE)
 data <- bfcrpath(bfc, file.path(
   "https://storage.googleapis.com/gtex_additional_datasets/single_cell_data",
   paste0(data_str, ".tar")))
-untar(data, exdir = tempdir())
 rm(bfc)
+untar(data, exdir = tempdir())
 ```
 
 ## Counts
@@ -161,12 +160,13 @@ rownames(counts) <- counts$V1
 counts <- as.matrix(counts[ , -1])
 cell_id_stem <- sapply(colnames(counts), function(xx) strsplit(xx, "_")[[1]][1], USE.NAMES = FALSE)
 col_dat <- data.frame(
-  sample = colnames(counts),
-  cell_id_stem = cell_id_stem,
-  stringsAsFactors = FALSE,
-  check.names = FALSE)
+  sample = colnames(counts), cell_id_stem = cell_id_stem,
+  stringsAsFactors = FALSE, check.names = FALSE)
 
 datatable(counts[1:5, 1:3])
+
+# Convert to dgCMatrix after datatable, as they are incompatible.
+counts <- Matrix(counts, sparse = TRUE)
 ```
 
 ### Clusters
@@ -186,11 +186,8 @@ ctype = c(
 
 # Merge cluster names with clust.
 map_clust_name <- data.frame(
-  habib_cluster = as.factor(seq(19)),
-  habib_cluster_name = cname,
-  habib_cell_type = ctype,
-  stringsAsFactors = FALSE,
-  check.names = FALSE)
+  habib_cluster = as.factor(seq(19)), habib_cluster_name = cname, habib_cell_type = ctype,
+  stringsAsFactors = FALSE, check.names = FALSE)
 clust <- join(
   clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
 rm(map_clust_name)
@@ -199,7 +196,7 @@ clust <- clust[match(col_dat$sample, clust$sample), ]
 datatable(clust[1:5, ])
 ```
 
-### t-SNE
+### tSNE
 
 ```{r}
 names(tsne) = c("sample", paste0("habib_tsne", 1:2))
@@ -234,7 +231,7 @@ if (file.exists(rds)) {
     "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
   gene_anno <- getBM(
     attributes = attr_string, filters = "external_gene_name", values = rownames(sce), mart = ensembl)
-  saveRDS(gene_anno, file = rds)}
+  saveRDS(gene_anno, rds)}
 ```
 
 Before merging it into the SCE object, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
@@ -284,12 +281,11 @@ par(mar = c(5, 4, 2, 1), bty = "n")
 plot(
   bc_rank$rank[uniq], bc_rank$total[uniq], log = "xy", xlab = "Rank",
   ylab = "Total UMI Count", cex = 0.5, cex.lab = 1.2)
-abline(h = bc_rank$inflection, col = "darkgreen", lty = 2, lwd = 2)
-abline(h = bc_rank$knee, col = "dodgerblue", lty = 2, lwd = 2)
+abline(h = metadata(bc_rank)$inflection, col = "darkgreen", lty = 2, lwd = 2)
+abline(h = metadata(bc_rank)$knee, col = "dodgerblue", lty = 2, lwd = 2)
 legend(
   "left", legend = c("Inflection", "Knee"), bty = "n", col = c("darkgreen", "dodgerblue"),
   lty = 2, cex = 1.2, lwd = 2)
-
 rm(bc_rank)
 ```
 
@@ -299,8 +295,9 @@ rm(bc_rank)
 # if (file.exists(rds)) {
 #   e_out <- readRDS(rds)
 # } else {
+#   set.seed(100)
 #   e_out <- emptyDrops(counts(sce))
-#   saveRDS(e_out, file = rds)}
+#   saveRDS(e_out, rds)}
 ```
 
 ```{r}
@@ -313,7 +310,7 @@ Using an annotation from [HGNC](https://www.genenames.org/), we first assess the
 
 ```{r}
 ribo_genes <- read.table(
-  file.path(assets_dir, "cache", "ribo-genes.txt"), sep = "\t",
+  file.path(assets_dir, "ribo-genes.txt"), sep = "\t",
   header = TRUE, stringsAsFactors = FALSE)
 is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
@@ -407,12 +404,12 @@ We also remove cells that have size factors from the function that are very smal
 To verify the validity of this method, we first plot each cell's size factor against their total counts.
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "clusters.rds")
+rds <- file.path(assets_dir, "cache", "quickCluster.rds")
 if (file.exists(rds)) {
-  clusters <- readRDS(rds)
+  quickCluster <- readRDS(rds)
 } else {
-  clusters <- quickCluster(sce, use.ranks = FALSE, method = "igraph")
-  saveRDS(clusters, rds)}
+  quickCluster <- quickCluster(sce, use.ranks = FALSE, min.mean = 0.1, method = "igraph")
+  saveRDS(quickCluster, rds)}
 ```
 
 ```{r, cache = TRUE}
@@ -420,13 +417,13 @@ rds <- file.path(assets_dir, "cache", "size_factors.rds")
 if (file.exists(rds)) {
   size_factors <- readRDS(rds)
 } else {
-  size_factors <- computeSumFactors(sce, cluster = clusters, min.mean = 0.1)
+  size_factors <- computeSumFactors(sce, cluster = quickCluster, min.mean = 0.1)
   saveRDS(size_factors, rds)}
 ```
 
 ```{r}
 sce <- size_factors
-rm(size_factors)
+rm(size_factors, quickCluster)
 sce <- sce[ , which(sizeFactors(sce) > 0.01)]
 
 par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
@@ -473,10 +470,9 @@ And then plot the HVGs themselves.
 ```{r}
 fit$trend <- new_trend
 dec <- decomposeVar(fit = fit)
-rm(fit)
 top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
 plotExpression(sce, features = rownames(top_dec)[1:10])
-rm(top_dec)
+rm(top_dec, fit)
 ```
 
 ## PCA
@@ -489,12 +485,13 @@ rds <- file.path(assets_dir, "cache", "pca.rds")
 if (file.exists(rds)) {
   pca <- readRDS(rds)
 } else {
-  pca <- denoisePCA(sce, technical = new_trend, approx = TRUE)
+  pca <- denoisePCA(sce, technical = new_trend, BSPARAM = IrlbaParam())
   saveRDS(pca, rds)}
 ```
 
 ```{r}
 sce <- pca
+rm(pca)
 df_redDim <- data.frame(
   colData(sce)[ , c(
     "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
@@ -521,7 +518,7 @@ Let's first define a function for consistant plotting throughout.
 ggplot_custom = function(data, x, y, col, type) {
 	gg <- ggplot(data, aes_string(x = x, y = y)) +
 		geom_point(size = 0.2, alpha = 0.6, aes_string(col = col)) +
-		theme_classic() + theme(legend.position = "bottom")
+	  theme_classic() + theme(legend.position = "bottom")
 	if (type == "cont") {
 		gg <- gg + scale_colour_gradient(low = "blue", high = "red")
 	} else if (type == "cat") {
@@ -541,33 +538,30 @@ ggplot_custom(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
 ggplot_custom(
-  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster", type = "cat")
-ggplot_custom(
-  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat")
-ggplot_custom(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cell_type", type = "cat")
+ggplotly(ggplot_custom(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat"))
 ```
 
 ### New
 
-We also calculate and plot new t-SNE coordinates using all of the genes in the dataset.
+We also calculate and plot new tSNE coordinates using all of the genes in the dataset.
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "tsne.rds")
+rds <- file.path(assets_dir, "cache", "runTSNE.rds")
 if (file.exists(rds)) {
-  tsne <- readRDS(rds)
+  runTSNE <- readRDS(rds)
 } else {
-  tsne <- runTSNE(sce, use_dimred = "PCA", perplexity = 30, rand_seed = 100)
-  saveRDS(tsne, rds)}
+  runTSNE <- runTSNE(sce, use_dimred = "PCA", perplexity = 50, rand_seed = 100)
+  saveRDS(runTSNE, rds)}
 ```
 
 ```{r}
-sce <- tsne
+sce <- runTSNE
 tmp_df <- data.frame(reducedDim(sce, "TSNE"), stringsAsFactors = FALSE)
 rownames(tmp_df) <- NULL
 names(tmp_df) <- paste0("new_tsne", 1:2)
 df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
-rm(tmp_df, tsne)
 
 ggplot_custom(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "cell_id_stem", type = "cat")
@@ -575,11 +569,10 @@ ggplot_custom(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
 ggplot_custom(
-  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster", type = "cat")
-ggplot_custom(
-  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat")
-ggplot_custom(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cell_type", type = "cat")
+ggplotly(ggplot_custom(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat"))
+rm(df_redDim, tmp_df, runTSNE)
 ```
 
 ### HVG
@@ -615,8 +608,8 @@ if (file.exists(rds)) {
 ```
 
 ```{r}
-rm(edat)
 pca <- t(ppk$d*t(ppk$u))
+rm(edat, ppk)
 tmp_df <- data.frame(pca[ , 1:2], stringsAsFactors = FALSE)
 names(tmp_df) <- paste0("hvg_pc", seq(ncol(tmp_df)))
 df_hvg <- data.frame(
@@ -630,23 +623,24 @@ rownames(df_hvg) <- NULL
 ```
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "new_tsne.rds")
+rds <- file.path(assets_dir, "cache", "Rtsne.rds")
 if (file.exists(rds)) {
-  new_tsne <- readRDS(rds)
+  Rtsne <- readRDS(rds)
 } else {
-  new_tsne <- Rtsne(pca, pca = FALSE)
-  saveRDS(new_tsne, rds)}
+  set.seed(100)
+  Rtsne <- Rtsne(pca, pca = FALSE, perplexity = 50)
+  saveRDS(Rtsne, rds)}
 ```
 
 ```{r}
-tmp_df <- data.frame(new_tsne$Y, stringsAsFactors = FALSE)
+tmp_df <- data.frame(Rtsne$Y, stringsAsFactors = FALSE)
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df, stringsAsFactors = FALSE)
-reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = new_tsne$Y)
-rm(new_tsne, pca, tmp_df, sce_hvg)
+reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne$Y)
+rm(Rtsne, pca, tmp_df)
 ```
 
-And finally, calculate the t-SNE plots.
+And finally, calculate the tSNE plots.
 
 ```{r}
 ggplot_custom(
@@ -655,142 +649,105 @@ ggplot_custom(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
 ggplot_custom(
-  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster", type = "cat")
-ggplot_custom(
-  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat")
-ggplot_custom(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cell_type", type = "cat")
+ggplotly(ggplot_custom(
+  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat"))
 ```
 
 # Clustering
 
 The above section simply altered the dimensionality or visualization of the previously established clusters in @habib_massively_2017.
-Now, we use various methods to generate new clusters.
+In this section we generate new clusters.
 
 ## k-means
 
-We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 15-19 clusters.
+We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 11-19 clusters.
 
 ```{r}
-all_num_clust <- c(15:19)
-df_redDim <- df_redDim[ , !grepl("^KM_", names(df_redDim))]
+all_num_clust <- c(11:19)
+df_hvg <- df_hvg[ , !grepl("^KM_", names(df_hvg))]
+rowData(sce_hvg)$feature_symbol <- rowData(sce_hvg)$external_gene_name
 ```
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "km_label.rds")
 if (file.exists(rds)) {
   km_label <- readRDS(rds)
-  df_redDim <- readRDS(file.path(assets_dir, "cache", "df_redDim_km.rds"))
+  df_hvg <- readRDS(file.path(assets_dir, "cache", "df_hvg.rds"))
 } else {
   for (num_clust in all_num_clust) {
     cat(paste0("k-means with ", num_clust, " clusters.\n"))
     kmeans_out <- kmeans(
-      reducedDim(sce, "PCA"), centers = num_clust, iter.max = 1e8,
+      reducedDim(sce_hvg, "PCA"), centers = num_clust, iter.max = 1e8,
       nstart = 2500, algorithm = "MacQueen")
     km_label <- paste0("km_", num_clust, "_clusters")
-    df_redDim[[km_label]] = as.factor(kmeans_out$cluster)
+    df_hvg[[km_label]] = as.factor(kmeans_out$cluster)
     rm(kmeans_out)}
   saveRDS(km_label, rds)
-  saveRDS(df_redDim, file.path(assets_dir, "cache", "df_redDim_km.rds"))}
-```
-
-## SC3
-
-As an alternative method, we generate another set of 15-19 clusters using SC3 [@kiselev_sc3_2017].
-
-```{r}
-rowData(sce)$feature_symbol <- rowData(sce)$external_gene_name
-all_ks <- c(15:19)
-```
-
-```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "sc3_out.rds")
-if (file.exists(rds)) {
-  sc3_out <- readRDS(rds)
-} else {
-  sc3_out <- sc3(sce, ks = all_ks, biology = TRUE)
-  saveRDS(sc3_out, rds)}
-```
-
-```{r}
-sce <- sc3_out
-rm(sc3_out)
-for (one_ks in all_ks) {
-  sc3_label <- paste0("sc3_", one_ks, "_clusters")
-  df_redDim[[sc3_label]] <- as.factor(colData(sce)[, sc3_label])}
-p_data <- c("habib_cluster_name", "cell_id_stem") # Metadata that we want included in SC3 figures.
+  saveRDS(df_hvg, file.path(assets_dir, "cache", "df_hvg.rds"))}
 ```
 
 ## Visualization
 
-Now we visualize the correlation between our two new cluster sets as well as the original clusters in @habib_massively_2017.
-We start by reading in Supplementary Table 10 from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
+Now we visualize the correlation between our new cluster set as well as the original clusters in @habib_massively_2017.
+We start by reading in Supplementary Table 7 (nmeth.4407-S10.xlsx) from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
 
 ```{r}
-name_change <- function(data, orig_name, new_name) {
-	index = which(names(data) == orig_name)
-	if (length(index) > 0) {
-		names(data)[index] = new_name
-	}
-	data}
-custom_merge = function(x, y, mess = NULL, ...) {
-	if (!is.null(mess)) {
-		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
-		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
-	}
-	merge(x, y, by = intersect(names(x), names(y)), ...)}
-
-tmp_lab <- read.table(
-  file.path(assets_dir, "cache", "cluster-num-label.txt"), sep = "\t",
-  header = TRUE, stringsAsFactors = FALSE)
-tmp_lab <- name_change(tmp_lab, "Name", "Cluster.Name")
-tmp_lab <- name_change(tmp_lab, "Name.1", "Cell_Type")
-
-tmp_clust <- read.table(
-  file.path(assets_dir, "cache", "paper-cluster.txt"), sep = "\t", header = TRUE,
-  comment.char = "", stringsAsFactors = FALSE)
-tmp_clust <- name_change(tmp_clust, "X.Genes", "nGenes")
-tmp_clust <- name_change(tmp_clust, "X.Transcripts", "nTranscripts")
-
-tmp_clust <- custom_merge(tmp_clust, tmp_lab[ , c("Cluster.Name", "Cell_Type")], all.x = TRUE)
-
-# Merge into our data.
-df_redDim$Cell.ID <- colnames(sce)
-df_redDim$hvg_tsne1 <- df_hvg$hvg_tsne1
-df_redDim$hvg_tsne2 <- df_hvg$hvg_tsne2
-all_clust <- custom_merge(df_redDim, tmp_clust)
-tmp_sc3 <- data.frame(colData(sce)[ , paste0("sc3_", all_ks, "_clusters")], stringsAsFactors = FALSE)
-for (ks in all_ks) {
-  sc3_label <- paste0("sc3_", ks, "_clusters")
-  tmp_sc3[ , sc3_label] <- as.factor(tmp_sc3[ , sc3_label])}
-tmp_sc3$Cell.ID <- colnames(sce)
-all_clust <- custom_merge(all_clust, tmp_sc3)
-rm(tmp_sc3, df_redDim, df_hvg, tmp_clust, tmp_lab)
+# # Define custom functions.
+# name_change <- function(data, orig_name, new_name) {
+# 	index = which(names(data) == orig_name)
+# 	if (length(index) > 0) {
+# 		names(data)[index] = new_name
+# 	}
+# 	data}
+# custom_merge = function(x, y, mess = NULL, ...) {
+# 	if (!is.null(mess)) {
+# 		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
+# 		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
+# 	}
+# 	merge(x, y, by = intersect(names(x), names(y)), ...)}
+# 
+# # Read in supplemental information.
+# tmp_lab <- read.table(
+#   file.path(assets_dir, "cluster-num-label.txt"), sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+# tmp_lab <- name_change(tmp_lab, "Name", "habib_cluster_name")
+# tmp_lab <- name_change(tmp_lab, "Name.1", "habib_cell_type")
+# tmp_clust <- read.table(
+#   file.path(assets_dir, "paper-cluster.txt"), sep = "\t", header = TRUE,
+#   comment.char = "", stringsAsFactors = FALSE)
+# tmp_clust <- name_change(tmp_clust, "X.Genes", "n_genes")
+# tmp_clust <- name_change(tmp_clust, "X.Transcripts", "n_transcripts")
+# tmp_clust <- custom_merge(
+#   tmp_clust, tmp_lab[ , c("habib_cluster_name", "habib_cell_type")], all.x = TRUE)
+# 
+# # Merge into our data.
+# df_hvg$cell_id <- colnames(sce_hvg)
+# all_clust <- custom_merge(df_hvg, tmp_clust)
+# rm(df_redDim, df_hvg, tmp_clust, tmp_lab)
 ```
 
-### t-SNE {.tabset}
+### tSNE {.tabset}
 
-We visualize our clusters using t-SNE, looking at both the HVG t-SNE generated earlier and coloring our clustering results atop of the clusters in @habib_massively_2017.
+We visualize our clusters using tSNE, looking at both the HVG tSNE generated earlier and coloring our clustering results atop of the clusters in @habib_massively_2017.
 
 ```{r}
-all_vars <- c(
-  "Cell_Type", paste0("km_", all_num_clust, "_clusters"), paste0("sc3_", all_ks, "_clusters"))
+# all_vars <- c("habib_cell_type", "habib_cluster_name", paste0("km_", all_num_clust, "_clusters"))
 ```
 
 #### HVG
 
 ```{r}
-for (one_var in all_vars) {
-  print(ggplot_custom(
-    data = all_clust, x = "hvg_tsne1", y = "hvg_tsne2", col = one_var, type = "cat"))}
+# for (one_var in all_vars) {
+#   print(ggplotly(ggplot_custom(
+#     data = all_clust, x = "hvg_tsne1", y = "hvg_tsne2", col = one_var, type = "cat")))}
 ```
 
 #### Habib
 
 ```{r}
-for (one_var in all_vars) {
-  print(ggplot_custom(
-    data = all_clust, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat"))}
+# for (one_var in all_vars) {
+#   print(ggplotly(ggplot_custom(
+#     data = all_clust, x = "habib_tsne1", y = "habib_tsne2", col = one_var, type = "cat")))}
 ```
 
 # References
@@ -799,8 +756,9 @@ This is the concluding section of the document.
 Here we write relevant results to disk, output the `session_info`, and create a bibliography for works cited.
 
 ```{r}
-saveRDS(sce, file = file.path(results_dir, "data", "sce.rds"))
-saveRDS(all_clust, file = file.path(results_dir, "data", "all_clust.rds"))
+saveRDS(sce, file.path(results_dir, "data", "sce.rds"))
+saveRDS(sce_hvg, file.path(results_dir, "data", "sce_hvg.rds"))
+# saveRDS(all_clust, file.path(results_dir, "data", "all_clust.rds"))
 ```
 
 ```{r}
