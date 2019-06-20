@@ -680,7 +680,7 @@ if (file.exists(rds)) {
       reducedDim(sce_hvg, "PCA"), centers = num_clust, iter.max = 1e8,
       nstart = 2500, algorithm = "MacQueen")
     km_label <- paste0("km_", num_clust, "_clusters")
-    df_hvg[[km_label]] = as.factor(kmeans_out$cluster)
+    df_hvg[[km_label]] <- as.factor(kmeans_out$cluster)
     rm(kmeans_out)}
   saveRDS(km_label, rds)
   saveRDS(df_hvg, file.path(assets_dir, "cache", "df_hvg.rds"))}
