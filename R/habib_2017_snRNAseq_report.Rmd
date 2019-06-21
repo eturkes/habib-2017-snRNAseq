@@ -499,15 +499,15 @@ Let's first define a function for consistent plotting throughout.
 
 ```{r}
 dim_red_plot = function(data, x, y, col, type) {
-	gg <- ggplot(data, aes_string(x = x, y = y)) +
-		geom_point(size = 0.2, alpha = 0.6, aes_string(col = col)) +
-	  theme_classic() + theme(legend.position = "bottom")
-	if (type == "cont") {
-		gg <- gg + scale_colour_gradient(low = "blue", high = "red")
-	} else if (type == "cat") {
-		gg <- gg + guides(color = guide_legend(override.aes = list(size = 3)))
-	}
-	gg}
+  gg <- ggplot(data, aes_string(x = x, y = y)) +
+    geom_point(size = 0.2, alpha = 0.6, aes_string(col = col)) +
+    theme_classic() + theme(legend.position = "bottom")
+  if (type == "cont") {
+    gg <- gg + scale_colour_gradient(low = "blue", high = "red")
+  } else if (type == "cat") {
+    gg <- gg + guides(color = guide_legend(override.aes = list(size = 3)))
+  }
+  gg}
 ```
 
 ### Habib
@@ -680,8 +680,7 @@ We start by reading in Supplementary Table 7 (nmeth.4407-S10.xlsx) from @habib_m
 name_change <- function(data, orig_name, new_name) {
   index <- which(names(data) == orig_name)
   if (length(index) > 0) {
-    names(data)[index] <- new_name
-  }
+    names(data)[index] <- new_name}
   data}
 
 # Read in supplemental information.
