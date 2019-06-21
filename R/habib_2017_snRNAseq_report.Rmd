@@ -676,20 +676,13 @@ Now we visualize the correlation between our new cluster set as well as the orig
 We start by reading in Supplementary Table 7 (nmeth.4407-S10.xlsx) from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
 
 ```{r}
-# Define custom functions.
+# Define custom function.
 name_change <- function(data, orig_name, new_name) {
-	index = which(names(data) == orig_name)
+	index <- which(names(data) == orig_name)
 	if (length(index) > 0) {
-		names(data)[index] = new_name
+		names(data)[index] <- new_name
 	}
 	data}
-
-custom_merge = function(x, y, mess = NULL, ...) {
-	if (!is.null(mess)) {
-		intersect_vars = paste(intersect(names(x), names(y)), collapse = ", ")
-		cat(paste0("Merging dataframes on variables = { ", intersect_vars, " }\n"))
-	}
-	merge(x, y, by = intersect(names(x), names(y)), ...)}
 
 # Read in supplemental information.
 tmp_lab <- read.table(
@@ -708,11 +701,15 @@ tmp_clust <- name_change(tmp_clust, "Cell.ID", "sample")
 tmp_clust <- name_change(tmp_clust, "Cluster.ID", "habib_cluster")
 tmp_clust <- name_change(tmp_clust, "Cluster.Name", "habib_cluster_name")
 
-tmp_clust <- custom_merge(
-  tmp_clust, tmp_lab[ , c("habib_cluster_name", "habib_cell_type")], all.x = TRUE)
+tmp_clust <- merge(
+  tmp_clust,
+  tmp_lab[ , c("habib_cluster_name", "habib_cell_type")],
+  by = intersect(names(tmp_clust), names(tmp_lab[ , c("habib_cluster_name", "habib_cell_type")])),
+  all.x = TRUE)
 
 # Merge into our data.
-all_clust <- custom_merge(df_hvg, tmp_clust)
+all_clust <- merge(df_hvg, tmp_clust, by = intersect(names(df_hvg), names(tmp_clust)))
+
 rm(df_hvg, tmp_clust, tmp_lab)
 ```
 
