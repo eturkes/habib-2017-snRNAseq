@@ -105,8 +105,9 @@ bfc <- BiocFileCache(data_dir, ask = FALSE)
 data <- bfcrpath(bfc, file.path(
   "https://storage.googleapis.com/gtex_additional_datasets/single_cell_data",
   paste0(data_str, ".tar")))
-rm(bfc)
 untar(data, exdir = tempdir())
+
+rm(bfc)
 ```
 
 ## Counts
@@ -172,8 +173,9 @@ map_clust_name <- data.frame(
   habib_cell_type = ctype, check.names = FALSE)
 clust <- join(
   clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
-rm(map_clust_name)
 clust <- clust[match(col_dat$sample, clust$sample), ]
+
+rm(map_clust_name)
 
 datatable(clust[1:5, ])
 ```
@@ -268,7 +270,6 @@ abline(h = metadata(bc_rank)$knee, col = "dodgerblue", lty = 2, lwd = 2)
 legend(
   "left", legend = c("Inflection", "Knee"), bty = "n", col = c("darkgreen", "dodgerblue"),
   lty = 2, cex = 1.2, lwd = 2)
-rm(bc_rank)
 ```
 
 ```{r, cache = TRUE}
@@ -294,8 +295,9 @@ Using an annotation from [HGNC](https://www.genenames.org/), we first assess the
 ribo_genes <- read.table(file.path(assets_dir, "ribo-genes.txt"), sep = "\t", header = TRUE)
 is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
-rm(ribo_genes)
 sce <- calculateQCMetrics(sce, feature_controls = list(Mt = is_mito, Ri = is_ribo))
+
+rm(ribo_genes, bc_rank)
 
 par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
 hist(
@@ -403,8 +405,9 @@ if (file.exists(rds)) {
 
 ```{r}
 sce <- size_factors
-rm(size_factors, quickCluster)
 sce <- sce[ , which(sizeFactors(sce) > 0.01)]
+
+rm(size_factors, quickCluster)
 
 par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
 smoothScatter(
@@ -452,7 +455,6 @@ fit$trend <- new_trend
 dec <- decomposeVar(fit = fit)
 top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
 plotExpression(sce, features = rownames(top_dec)[1:10])
-rm(top_dec, fit)
 ```
 
 ## PCA
@@ -471,7 +473,6 @@ if (file.exists(rds)) {
 
 ```{r}
 sce <- pca
-rm(pca)
 df_redDim <- data.frame(
   colData(sce)[ , c(
     "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
@@ -479,12 +480,15 @@ df_redDim <- data.frame(
   reducedDim(sce, "PCA")[ , 1:2])
 rownames(df_redDim) <- NULL
 
+rm(pca, top_dec, fit)
+
 par(mfrow = c(1, 1))
 plot(
   log10(attr(reducedDim(sce), "percentVar")), xlab = "PC",
   ylab = "log10(Proportion of Variance Explained)", pch = 20,
   cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
 abline(v = ncol(reducedDim(sce, "PCA")), lty = 2, col = "red")
+
 plotPCA(sce, ncomponents = 3, colour_by = "log10_total_features_by_counts")
 ```
 
@@ -551,7 +555,6 @@ dim_red_plot(
   col = "log10_total_features_by_counts", type = "cont")
 dim_red_plot(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cell_type", type = "cat")
-rm(df_redDim, tmp_df, runTSNE)
 ```
 
 ### HVG
@@ -569,10 +572,11 @@ hist(log10(dec1$bio), breaks = 100, main = "")
 hist(log10(dec1$FDR), breaks = 100, main = "")
 
 w2kp <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
-rm(dec, dec1)
 sce_hvg <- sce[w2kp, ]
 edat <- t(as.matrix(logcounts(sce_hvg)))
 edat <- scale(edat)
+
+rm(dec, dec1, df_redDim, tmp_df, runTSNE)
 ```
 
 Next, we calculate PCs using the log-transformed normalized expression data.
@@ -588,7 +592,6 @@ if (file.exists(rds)) {
 
 ```{r}
 pca <- t(ppk$d*t(ppk$u))
-rm(edat, ppk)
 tmp_df <- data.frame(pca[ , 1:2])
 names(tmp_df) <- paste0("hvg_pc", seq(ncol(tmp_df)))
 df_hvg <- data.frame(
@@ -598,6 +601,8 @@ df_hvg <- data.frame(
   )],
   tmp_df)
 rownames(df_hvg) <- NULL
+
+rm(edat, ppk)
 ```
 
 ```{r, cache = TRUE}
@@ -615,6 +620,7 @@ tmp_df <- data.frame(Rtsne$Y)
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df)
 reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne$Y)
+
 rm(Rtsne, pca, tmp_df)
 ```
 
@@ -659,8 +665,7 @@ if (file.exists(rds)) {
       reducedDim(sce_hvg, "PCA"), centers = num_clust, iter.max = 1e8,
       nstart = 2500, algorithm = "MacQueen")
     km_label <- paste0("km_", num_clust, "_clusters")
-    df_hvg[[km_label]] <- as.factor(kmeans_out$cluster)
-    rm(kmeans_out)}
+    df_hvg[[km_label]] <- as.factor(kmeans_out$cluster)}
   saveRDS(km_label, rds)
   saveRDS(df_hvg, file.path(assets_dir, "cache", "df_hvg.rds"))}
 ```
