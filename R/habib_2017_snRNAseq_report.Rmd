@@ -495,10 +495,10 @@ plotPCA(sce, ncomponents = 3, colour_by = "log10_total_features_by_counts")
 ## tSNE {.tabset}
 
 We use several approaches to identify clusters using tSNE, so this section is broken down into multiple subsections, with each tab referring to a particular set of coordinates.
-Let's first define a function for consistant plotting throughout.
+Let's first define a function for consistent plotting throughout.
 
 ```{r}
-ggplot_custom = function(data, x, y, col, type) {
+dim_red_plot = function(data, x, y, col, type) {
 	gg <- ggplot(data, aes_string(x = x, y = y)) +
 		geom_point(size = 0.2, alpha = 0.6, aes_string(col = col)) +
 	  theme_classic() + theme(legend.position = "bottom")
@@ -515,14 +515,14 @@ ggplot_custom = function(data, x, y, col, type) {
 As tSNE coordinates were released with the original dataset, we plot them here to replicate the results of @habib_massively_2017.
 
 ```{r}
-ggplotly(ggplot_custom(
-  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat"))
-ggplot_custom(
+dim_red_plot(
+  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat")
+dim_red_plot(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "cell_id_stem", type = "cat")
-ggplot_custom(
+dim_red_plot(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
-ggplot_custom(
+dim_red_plot(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
@@ -546,14 +546,14 @@ rownames(tmp_df) <- NULL
 names(tmp_df) <- paste0("new_tsne", 1:2)
 df_redDim <- data.frame(df_redDim, tmp_df, stringsAsFactors = FALSE)
 
-ggplotly(ggplot_custom(
-  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat"))
-ggplot_custom(
+dim_red_plot(
+  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat")
+dim_red_plot(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "cell_id_stem", type = "cat")
-ggplot_custom(
+dim_red_plot(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
-ggplot_custom(
+dim_red_plot(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cell_type", type = "cat")
 rm(df_redDim, tmp_df, runTSNE)
 ```
@@ -626,14 +626,14 @@ rm(Rtsne, pca, tmp_df)
 And finally, calculate the tSNE plots.
 
 ```{r}
-ggplotly(ggplot_custom(
-  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat"))
-ggplot_custom(
+dim_red_plot(
+  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat")
+dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "cell_id_stem", type = "cat")
-ggplot_custom(
+dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
-ggplot_custom(
+dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
@@ -678,11 +678,11 @@ We start by reading in Supplementary Table 7 (nmeth.4407-S10.xlsx) from @habib_m
 ```{r}
 # Define custom function.
 name_change <- function(data, orig_name, new_name) {
-	index <- which(names(data) == orig_name)
-	if (length(index) > 0) {
-		names(data)[index] <- new_name
-	}
-	data}
+  index <- which(names(data) == orig_name)
+  if (length(index) > 0) {
+    names(data)[index] <- new_name
+  }
+  data}
 
 # Read in supplemental information.
 tmp_lab <- read.table(
@@ -725,7 +725,7 @@ all_vars <- c("habib_cell_type", "habib_cluster_name", paste0("km_", all_num_clu
 
 ```{r}
 for (var in all_vars) {
-  print(ggplot_custom(
+  print(dim_red_plot(
     data = all_clust, x = "hvg_tsne1", y = "hvg_tsne2", col = var, type = "cat"))}
 ```
 
@@ -733,7 +733,7 @@ for (var in all_vars) {
 
 ```{r}
 for (var in all_vars) {
-  print(ggplot_custom(
+  print(dim_red_plot(
     data = all_clust, x = "habib_tsne1", y = "habib_tsne2", col = var, type = "cat"))}
 ```
 
