@@ -1,7 +1,7 @@
 ---
 title: "Habib 2017 snRNAseq Report"
 author:
-  - name: "Emir Turkes"
+  - name: "Emir Turkes [et2628@cumc.columbia.edu]"
   - name: "Columbia University"
 date: '`r strftime(Sys.time(), format = "%B %d, %Y")`'
 bibliography: "../habib-2017-snRNAseq.bib"
@@ -11,6 +11,7 @@ output:
   html_document:
     number_sections: true
     theme: lumen
+    highlight: zenburn
     toc: true
     toc_depth: 2
     toc_float:
@@ -79,36 +80,19 @@ The following top-level sections break down the methods used to perform the anal
 We start by loading in any required packages and setting some global variables.
 
 ```{r}
-library(conflicted)
-library(devtools)
-library(BiocFileCache)
-library(data.table)
-library(DT)
-library(Matrix)
-library(plyr)
-library(SingleCellExperiment)
-library(biomaRt)
-library(dplyr)
-library(SummarizedExperiment)
-library(DropletUtils)
-library(scater)
-library(scran)
-library(BiocSingular)
-library(ggplot2)
-library(plotly)
-library(svd)
-library(Rtsne)
-library(S4Vectors)
-```
+packages <- c(
+  "conflicted", "BiocFileCache", "data.table", "DT", "Matrix", "plyr", "SingleCellExperiment",
+  "biomaRt", "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "BiocSingular",
+  "ggplot2", "plotly", "svd", "Rtsne", "S4Vectors")
+invisible(suppressMessages(lapply(packages, library, character.only = TRUE)))
 
-```{r}
+conflict_prefer("which", "BiocGenerics")
+conflict_prefer("intersect", "BiocGenerics")
+
 data_str <- "GTEx_droncseq_hip_pcf"
 data_dir <- file.path(getwd(), "..", "data")
 assets_dir <- file.path(getwd(), "..", "assets")
 results_dir <- file.path(getwd(), "..", "results")
-
-conflict_prefer("which", "BiocGenerics")
-conflict_prefer("intersect", "BiocGenerics")
 ```
 
 # Original Data {.tabset}
@@ -759,14 +743,12 @@ for (var in all_vars) {
 # References
 
 This is the concluding section of the document.
-Here we write relevant results to disk, output the `session_info`, and create a bibliography for works cited.
+Here we write relevant results to disk, output the `sessionInfo`, and create a bibliography for works cited.
 
 ```{r}
 saveRDS(sce, file.path(results_dir, "data", "sce.rds"))
 saveRDS(sce_hvg, file.path(results_dir, "data", "sce_hvg.rds"))
 saveRDS(all_clust, file.path(results_dir, "data", "all_clust.rds"))
-```
 
-```{r}
-session_info()
+sessionInfo()
 ```
