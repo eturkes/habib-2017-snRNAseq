@@ -94,6 +94,10 @@ data_str <- "GTEx_droncseq_hip_pcf"
 data_dir <- file.path(getwd(), "..", "data")
 assets_dir <- file.path(getwd(), "..", "assets")
 results_dir <- file.path(getwd(), "..", "results")
+
+# Create a cache for storing the objects of long-running computations.
+if (!dir.exists(file.path(assets_dir, "cache"))) {
+  dir.create(file.path(assets_dir, "cache"))}
 ```
 
 # Original Data {.tabset}
@@ -106,7 +110,6 @@ data <- bfcrpath(bfc, file.path(
   "https://storage.googleapis.com/gtex_additional_datasets/single_cell_data",
   paste0(data_str, ".tar")))
 untar(data, exdir = tempdir())
-
 rm(bfc)
 ```
 
@@ -140,7 +143,7 @@ datatable(tsne[1:5, ])
 
 Here we do any data wrangling neccessary to transform the data into more convenient formats for downstream analysis.
 
-### Counts
+## Counts
 
 ```{r}
 rownames(counts) <- counts$V1
@@ -154,7 +157,7 @@ datatable(counts[1:5, 1:3])
 counts <- Matrix(counts, sparse = TRUE)
 ```
 
-### Clusters
+## Clusters
 
 ```{r}
 clust <- clust[ , -c(2:3)]
@@ -165,7 +168,7 @@ clust <- clust[match(col_dat$sample, clust$sample), ]
 datatable(clust[1:5, ])
 ```
 
-### tSNE
+## tSNE
 
 ```{r}
 names(tsne) = c("sample", paste0("habib_tsne", 1:2))
@@ -187,7 +190,7 @@ sce
 
 ## Gene Annotations
 
-To provide additional metadata, we generate annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
+We add annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "gene_anno.rds")
@@ -240,7 +243,7 @@ These sections assess and correct issues and irregularities in the dataset.
 
 In order to remove droplets which do not contain a cell but are rather ambient RNA, we visualize the inflection point on a knee plot, as described originally in @macosko_highly_2015.
 Removal was then to be originally done using `emptyDrops` from the `DropletUtils` package, but due to an unresolved error (`no counts available to estimate the ambient profile`), we skip it.
-In any case, all 14,963 cells were used for the analysis in @habib_massively_2017.
+In any case, all 14,963 cells were used in the original analysis in @habib_massively_2017, so this step is not crucial.
 
 ```{r}
 bc_rank <- barcodeRanks(counts(sce))
@@ -281,7 +284,6 @@ ribo_genes <- read.table(file.path(assets_dir, "ribo-genes.txt"), sep = "\t", he
 is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
 sce <- calculateQCMetrics(sce, feature_controls = list(Mt = is_mito, Ri = is_ribo))
-
 rm(ribo_genes, bc_rank)
 
 par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
@@ -325,16 +327,7 @@ sce <- sce[ , keep]
 
 ## Lowly Expressed Genes
 
-As described in @habib_massively_2017,
-
-> Nuclei with less than 200 detected genes and less than 10,000 usable reads were filtered out.
-
-and
-
-> A gene is considered detected in a cell if it has at least two unique UMIs (transcripts) associated with it.
-For each analysis, genes were removed that were detected in less than 10 nuclei.
-
-From these descriptions we conclude that nuclei that have less than 200 genes in one or more UMIs should be removed.
+According to the original paper, nuclei that have less than 200 genes in one or more UMIs should be removed.
 We start by first visualizing some gene-level summary statistics.
 
 ```{r}
@@ -368,7 +361,7 @@ plotHighestExprs(sce)
 We use `computeSumFactors` from the `scran` package to perform normalization.
 This function uses a linear deconvolution system to account for expected variation across different cell types/sizes [@l_lun_pooling_2016].
 We also remove cells that have size factors from the function that are very small ($< 0.01$) or negative.
-To verify the validity of this method, we first plot each cell's size factor against their total counts.
+To verify that the method is appropriate for our data, we start by plotting each cell's size factor against their total counts.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "quickCluster.rds")
@@ -391,8 +384,7 @@ if (file.exists(rds)) {
 ```{r}
 sce <- size_factors
 sce <- sce[ , which(sizeFactors(sce) > 0.01)]
-
-rm(size_factors, quickCluster)
+rm(size_factors)
 
 par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
 smoothScatter(
@@ -411,41 +403,11 @@ sce <- normalize(sce)
 
 # Dimensionality Reduction
 
-This section details steps taken to reduce the dimensionality of the dataset through methods like PCA, tSNE, UMAP, etc.
-
-## HVG
-
-We start by identifying highly variable genes (HVGs), which is the first step in many PCA/tSNE approaches.
-HVGs are those that exhibit a high amount of biological signal relative to background noise.
-First, let's visualize variability in our dataset.
-
-```{r}
-new_trend <- makeTechTrend(x = sce)
-fit <- trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
-par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
-plot(
-  fit$mean, fit$var, pch = 20,
-  col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "log(Mean)", ylab = "Variance")
-curve(fit$trend(x), col = "orange", lwd = 2, add = TRUE)
-curve(new_trend(x), col = "red", lwd = 2, add = TRUE)
-legend(
-  "top", legend = c("Poisson Noise", "Observed Trend"), lty = 1,
-  lwd = 2, col = c("red", "orange"), bty = "n")
-```
-
-And then plot the HVGs themselves.
-
-```{r}
-fit$trend <- new_trend
-dec <- decomposeVar(fit = fit)
-top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
-plotExpression(sce, features = rownames(top_dec)[1:10])
-```
+This section details steps taken to reduce the dimensionality of the dataset.
 
 ## PCA
 
-We start by performing PCA on all of the genes rather than just HVGs using `denoisePCA` from the `scran` package.
-This function automatically selects PCs by modelling technical noise.
+We use the `denoisePCA` from the `scran` package, which automatically selects PCs by modeling technical noise.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "pca.rds")
@@ -460,11 +422,10 @@ if (file.exists(rds)) {
 sce <- pca
 df_redDim <- data.frame(
   colData(sce)[ , c(
-    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
-    "habib_cluster", "habib_cluster_name", "habib_cell_type")],
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2),
+    "log10_total_features_by_counts", "habib_cluster", "habib_cluster_name")],
   reducedDim(sce, "PCA")[ , 1:2])
 rownames(df_redDim) <- NULL
-
 rm(pca, top_dec, fit)
 
 par(mfrow = c(1, 1))
@@ -477,12 +438,12 @@ abline(v = ncol(reducedDim(sce, "PCA")), lty = 2, col = "red")
 plotPCA(sce, ncomponents = 3, colour_by = "log10_total_features_by_counts")
 ```
 
-## tSNE {.tabset}
+## tSNE
 
-We use several approaches to identify clusters using tSNE, so this section is broken down into multiple subsections, with each tab referring to a particular set of coordinates.
-Let's first define a function for consistent plotting throughout.
+We plot the tSNE coordinates provided in @habib_massively_2017 as well create new ones off of the PCs just created.
 
 ```{r}
+# Define a custom function for plotting.
 dim_red_plot = function(data, x, y, col, type) {
   gg <- ggplot(data, aes_string(x = x, y = y)) +
     geom_point(size = 0.2, alpha = 0.6, aes_string(col = col)) +
@@ -497,8 +458,6 @@ dim_red_plot = function(data, x, y, col, type) {
 
 ### Habib
 
-As tSNE coordinates were released with the original dataset, we plot them here to replicate the results of @habib_massively_2017.
-
 ```{r}
 dim_red_plot(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat")
@@ -507,13 +466,9 @@ dim_red_plot(
 dim_red_plot(
   data = df_redDim, x = "habib_tsne1", y = "habib_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
-dim_red_plot(
-  data = df_redDim, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
 ### New
-
-We also calculate and plot new tSNE coordinates using all of the genes in the dataset.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "runTSNE.rds")
@@ -538,14 +493,38 @@ dim_red_plot(
 dim_red_plot(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
-dim_red_plot(
-  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
-### HVG
+## HVG
 
-Another way to cluster is by using the HVGs calculated earlier.
-First, we select the top 1,000 HVGs using their FDR and biological residual thresholds and visualize them below.
+HVGs are those that exhibit a high amount of biological signal relative to background noise and can often offer better clustering performance than using all genes in a dataset.
+We start by plotting the variability of genes in our dataset against the expected Poisson technical noise.
+
+```{r}
+new_trend <- makeTechTrend(x = sce)
+fit <- trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
+par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
+plot(
+  fit$mean, fit$var, pch = 20,
+  col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "log(Mean)", ylab = "Variance")
+curve(fit$trend(x), col = "orange", lwd = 2, add = TRUE)
+curve(new_trend(x), col = "red", lwd = 2, add = TRUE)
+legend(
+  "top", legend = c("Poisson Noise", "Observed Trend"), lty = 1,
+  lwd = 2, col = c("red", "orange"), bty = "n")
+```
+
+The plot shows a large discrepancy between the two trends, which is contributed by each gene's biological component.
+We extract the genes with the largest biological components and plot them here.
+
+```{r}
+fit$trend <- new_trend
+dec <- decomposeVar(fit = fit)
+top_dec <- dec[order(dec$bio, decreasing = TRUE), ]
+plotExpression(sce, features = rownames(top_dec)[1:10])
+```
+
+Finally, we select the top roughly 1,000 HVGs using their FDR and biological residual thresholds and visualize them below.
 
 ```{r}
 dec1 <- dec
@@ -555,16 +534,18 @@ dec1$FDR[which(dec$FDR < 1e-100)] <- 1e-100
 par(mfrow = c(1, 2))
 hist(log10(dec1$bio), breaks = 100, main = "")
 hist(log10(dec1$FDR), breaks = 100, main = "")
+table(dec$FDR < 1e-10, dec$bio > 0.015)
 
-w2kp <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
-sce_hvg <- sce[w2kp, ]
+keep <- which(dec$FDR < 1e-10 & dec$bio > 0.02)
+sce_hvg <- sce[keep, ]
 edat <- t(as.matrix(logcounts(sce_hvg)))
 edat <- scale(edat)
-
 rm(dec, dec1, df_redDim, tmp_df, runTSNE)
 ```
 
-Next, we calculate PCs using the log-transformed normalized expression data.
+### PCA
+
+PCs are calculated using the log-transformed normalized expression data of the HVGs.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "ppk.rds")
@@ -581,14 +562,16 @@ tmp_df <- data.frame(pca[ , 1:2])
 names(tmp_df) <- paste0("hvg_pc", seq(ncol(tmp_df)))
 df_hvg <- data.frame(
   colData(sce)[ , c(
-    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
-    "habib_cluster", "habib_cluster_name", "habib_cell_type"
-  )],
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2),
+    "log10_total_features_by_counts", "habib_cluster", "habib_cluster_name")],
   tmp_df)
 rownames(df_hvg) <- NULL
-
-rm(edat, ppk)
+rm(edat)
 ```
+
+### tSNE
+
+Using our HVG PCs we calculate and plot the tSNEs.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "Rtsne.rds")
@@ -605,13 +588,8 @@ tmp_df <- data.frame(Rtsne$Y)
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df)
 reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne$Y)
-
 rm(Rtsne, pca, tmp_df)
-```
 
-And finally, calculate the tSNE plots.
-
-```{r}
 dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat")
 dim_red_plot(
@@ -619,30 +597,26 @@ dim_red_plot(
 dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
-dim_red_plot(
-  data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cell_type", type = "cat")
 ```
 
 # Clustering
 
-The above section simply altered the dimensionality or visualization of the previously established clusters in @habib_massively_2017.
-In this section we generate new clusters.
+The previous sections utilized cluster labels provided in @habib_massively_2017.
+In this section, we will see if we can replicate those clusters.
 
 ## k-means
 
-We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 11-19 clusters.
+We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 15-18 clusters.
 
 ```{r}
-all_num_clust <- c(11:19)
-df_hvg <- df_hvg[ , !grepl("^KM_", names(df_hvg))]
+all_num_clust <- c(15:18)
 rowData(sce_hvg)$feature_symbol <- rowData(sce_hvg)$external_gene_name
 ```
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "km_label.rds")
+rds <- file.path(assets_dir, "cache", "df_hvg.rds")
 if (file.exists(rds)) {
-  km_label <- readRDS(rds)
-  df_hvg <- readRDS(file.path(assets_dir, "cache", "df_hvg.rds"))
+  df_hvg <- readRDS(rds)
 } else {
   for (num_clust in all_num_clust) {
     cat(paste0("k-means with ", num_clust, " clusters.\n"))
@@ -651,56 +625,19 @@ if (file.exists(rds)) {
       nstart = 2500, algorithm = "MacQueen")
     km_label <- paste0("km_", num_clust, "_clusters")
     df_hvg[[km_label]] <- as.factor(kmeans_out$cluster)}
-  saveRDS(km_label, rds)
-  saveRDS(df_hvg, file.path(assets_dir, "cache", "df_hvg.rds"))}
+  saveRDS(df_hvg, rds)}
 ```
 
-## Visualization
+## Comparison
 
-Now we visualize the correlation between our new cluster set as well as the original clusters in @habib_massively_2017.
-We start by reading in Supplementary Table 7 (nmeth.4407-S10.xlsx) from @habib_massively_2017 to provide a consistent set of labels and merging it into our data.
-
-```{r}
-# Define custom function.
-name_change <- function(data, orig_name, new_name) {
-  index <- which(names(data) == orig_name)
-  if (length(index) > 0) {
-    names(data)[index] <- new_name}
-  data}
-
-# Read in supplemental information.
-tmp_lab <- read.table(file.path(assets_dir, "cluster-num-label.txt"), sep = "\t", header = TRUE)
-tmp_lab <- name_change(tmp_lab, "Name", "habib_cluster_name")
-tmp_lab <- name_change(tmp_lab, "Name.1", "habib_cell_type")
-tmp_lab <- name_change(tmp_lab, "Cell.ID", "sample")
-tmp_lab <- name_change(tmp_lab, "Cell.Type.ID", "habib_cluster")
-
-tmp_clust <- read.table(
-  file.path(assets_dir, "paper-cluster.txt"), sep = "\t", header = TRUE, comment.char = "")
-tmp_clust <- name_change(tmp_clust, "X.Genes", "n_genes")
-tmp_clust <- name_change(tmp_clust, "X.Transcripts", "n_transcripts")
-tmp_clust <- name_change(tmp_clust, "Cell.ID", "sample")
-tmp_clust <- name_change(tmp_clust, "Cluster.ID", "habib_cluster")
-tmp_clust <- name_change(tmp_clust, "Cluster.Name", "habib_cluster_name")
-
-tmp_clust <- merge(
-  tmp_clust,
-  tmp_lab[ , c("habib_cluster_name", "habib_cell_type")],
-  by = intersect(names(tmp_clust), names(tmp_lab[ , c("habib_cluster_name", "habib_cell_type")])),
-  all.x = TRUE)
-
-# Merge into our data.
-all_clust <- merge(df_hvg, tmp_clust, by = intersect(names(df_hvg), names(tmp_clust)))
-
-rm(df_hvg, tmp_clust, tmp_lab)
-```
+Now that new clusters have been generated, we assess their agreement with those in @habib_massively_2017.
 
 ### tSNE {.tabset}
 
-We visualize our clusters using tSNE, looking at both the HVG tSNE generated earlier and coloring our clustering results atop of the clusters in @habib_massively_2017.
+We visualize our clusters and those in @habib_massively_2017 using both their tSNE coordinates the the HVG tSNE calculated earlier.
 
 ```{r}
-all_vars <- c("habib_cell_type", "habib_cluster_name", paste0("km_", all_num_clust, "_clusters"))
+all_vars <- c("habib_cluster_name", "habib_cluster", paste0("km_", all_num_clust, "_clusters"))
 ```
 
 #### HVG
@@ -708,7 +645,7 @@ all_vars <- c("habib_cell_type", "habib_cluster_name", paste0("km_", all_num_clu
 ```{r}
 for (var in all_vars) {
   print(dim_red_plot(
-    data = all_clust, x = "hvg_tsne1", y = "hvg_tsne2", col = var, type = "cat"))}
+    data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = var, type = "cat"))}
 ```
 
 #### Habib
@@ -716,7 +653,7 @@ for (var in all_vars) {
 ```{r}
 for (var in all_vars) {
   print(dim_red_plot(
-    data = all_clust, x = "habib_tsne1", y = "habib_tsne2", col = var, type = "cat"))}
+    data = df_hvg, x = "habib_tsne1", y = "habib_tsne2", col = var, type = "cat"))}
 ```
 
 # References
@@ -727,7 +664,7 @@ Here we write relevant results to disk, output the `sessionInfo`, and create a b
 ```{r}
 saveRDS(sce, file.path(results_dir, "data", "sce.rds"))
 saveRDS(sce_hvg, file.path(results_dir, "data", "sce_hvg.rds"))
-saveRDS(all_clust, file.path(results_dir, "data", "all_clust.rds"))
+saveRDS(df_hvg, file.path(results_dir, "data", "df_hvg.rds"))
 
 sessionInfo()
 ```
