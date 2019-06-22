@@ -19,6 +19,10 @@
 -->
 
 # Habib 2017 snRNAseq Analysis
-#### *This analysis is a work-in-progress*
+#### *This analysis is considered complete and should not see major updates*
 
-Analysis of Habib 2017 snRNAseq
+Analysis of Habib 2017 snRNAseq data  
+
+In order to run and view the results of this analysis, the prerequisite data is required.
+Please contact me at emir.turkes@eturkes.com if you are interested.
+Otherwise, feel free to reuse this codebase in accordance with the license.
