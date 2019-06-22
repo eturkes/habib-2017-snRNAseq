@@ -81,9 +81,9 @@ We start by loading in any required packages and setting some global variables.
 
 ```{r}
 packages <- c(
-  "conflicted", "BiocFileCache", "data.table", "DT", "Matrix", "plyr", "SingleCellExperiment",
-  "biomaRt", "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "BiocSingular",
-  "ggplot2", "plotly", "svd", "Rtsne", "S4Vectors")
+  "conflicted", "BiocFileCache", "data.table", "DT", "Matrix", "SingleCellExperiment",
+  "biomaRt", "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran",
+  "BiocSingular", "ggplot2", "plotly", "svd", "Rtsne", "S4Vectors")
 invisible(suppressMessages(lapply(packages, library, character.only = TRUE)))
 
 options(stringsAsFactors = FALSE)
@@ -121,16 +121,18 @@ datatable(counts[1:5, 1:3])
 ## Clusters
 
 ```{r}
-clust <- fread(
-  file.path(tempdir(), data_str, paste0(data_str, ".clusters.txt.gz")), data.table = FALSE)
+# The original clusters file, GTEx_droncseq_hip_pcf.clusters.txt, has several inconsistencies.
+# Specifically in clusters 15-18 and they do not match those in the original publication.
+# Therefore we use Supplementary Table 7 (nmeth.4407-S10.xlsx), which has consistent labels.
+# As this file contained non-standard formatting, minimal manual editing was done for use with R.
+clust <- fread(file.path(assets_dir, "nmeth.4407-S10-edited.txt"), data.table = FALSE)
 datatable(clust[1:5, ])
 ```
 
 ## tSNE
 
 ```{r}
-tsne <- fread(
-  file.path(tempdir(), data_str, paste0(data_str, ".tsne.txt.gz")), data.table = FALSE)
+tsne <- fread(file.path(tempdir(), data_str, paste0(data_str, ".tsne.txt.gz")), data.table = FALSE)
 datatable(tsne[1:5, ])
 ```
 
@@ -155,27 +157,10 @@ counts <- Matrix(counts, sparse = TRUE)
 ### Clusters
 
 ```{r}
-names(clust) <- c("sample", "habib_cluster")
+clust <- clust[ , -c(2:3)]
+names(clust) <- c("sample", "habib_cluster", "habib_cluster_name")
 clust$habib_cluster <- as.factor(clust$habib_cluster)
-
-# Add cluster names from Supplementary Table 8 (nmeth.4407-S11.xlsx).
-# The last four clusters lack labels.
-cname = c(
-  "exPFC1", "exPFC2", "exCA1", "exCA3", "GABA1", "GABA2", "exDG", "ASC1",
-  "ASC2", "ODC1", "ODC2", "OPC", "MG", "NSC", "END", rep(NA, 4))
-ctype = c(
-  "exPFC", "exPFC", "exCA1", "exCA3", "GABA", "GABA", "exDG", "ASC",
-  "ASC", "ODC", "ODC", "OPC", "MG", "NSC", "END", rep(NA, 4))
-
-# Merge cluster names with clust.
-map_clust_name <- data.frame(
-  habib_cluster = as.factor(seq(19)), habib_cluster_name = cname,
-  habib_cell_type = ctype, check.names = FALSE)
-clust <- join(
-  clust, map_clust_name, by = intersect(names(clust), names(map_clust_name)))
 clust <- clust[match(col_dat$sample, clust$sample), ]
-
-rm(map_clust_name)
 
 datatable(clust[1:5, ])
 ```
