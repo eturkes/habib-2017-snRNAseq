@@ -640,20 +640,20 @@ We visualize our clusters and those in @habib_massively_2017 using both their tS
 all_vars <- c("habib_cluster_name", "habib_cluster", paste0("km_", all_num_clust, "_clusters"))
 ```
 
-#### HVG
-
-```{r}
-for (var in all_vars) {
-  print(dim_red_plot(
-    data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = var, type = "cat"))}
-```
-
 #### Habib
 
 ```{r}
 for (var in all_vars) {
   print(dim_red_plot(
     data = df_hvg, x = "habib_tsne1", y = "habib_tsne2", col = var, type = "cat"))}
+```
+
+#### HVG
+
+```{r}
+for (var in all_vars) {
+  print(dim_red_plot(
+    data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = var, type = "cat"))}
 ```
 
 # References
