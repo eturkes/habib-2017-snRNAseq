@@ -68,7 +68,7 @@ The background for this data is as follows:
 - 3 PFC samples, 4 hippocampus samples from 5 donors.
 
 This analysis was performed in R except where noted.
-The source code and instructions for rerunning the analysis can be found at [github.com/eturkes/habib-2017-snRNAseq](https://github.com/eturkes/habib-2017-snRNAseq).
+The source code and instructions for rerunning the analysis can be found at [github.com/eturkes/habib-2017-snRNAseq](https://github.com/eturkes/habib-2017-snRNAseq) *(currently private, please email for access)*.
 
 # Final Results
 
@@ -163,9 +163,9 @@ We start by loading in any required packages and setting some global variables.
 
 ```{r}
 packages <- c(
-  "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment",
-  "biomaRt", "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran",
-  "BiocSingular", "ggplot2", "plotly", "svd", "Rtsne", "S4Vectors")
+  "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment", "biomaRt",
+  "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "BiocSingular",
+  "ggplot2", "plotly", "svd", "Rtsne", "S4Vectors")
 invisible(suppressPackageStartupMessages(lapply(packages, library, character.only = TRUE)))
 
 options(stringsAsFactors = FALSE)
@@ -582,22 +582,88 @@ dim_red_plot(
 
 ### New
 
+First we plot several tSNEs over a range of perplexity values to find the one that best represents our data.
+Rather large values are chosen to achieve tighter clusters similar to that in @habib_massively_2017.
+
+#### Perplexity = 50
+
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "runTSNE.rds")
+rds <- file.path(assets_dir, "cache", "runTSNE_perp50.rds")
 if (file.exists(rds)) {
-  runTSNE <- readRDS(rds)
+  runTSNE_perp50 <- readRDS(rds)
 } else {
-  runTSNE <- runTSNE(sce, use_dimred = "PCA", perplexity = 50, rand_seed = 100)
-  saveRDS(runTSNE, rds)}
+  runTSNE_perp50 <- runTSNE(sce, use_dimred = "PCA", perplexity = 50, rand_seed = 100)
+  saveRDS(runTSNE_perp50, rds)}
 ```
 
 ```{r}
-sce <- runTSNE
+sce <- runTSNE_perp50
+tmp_df <- data.frame(reducedDim(sce, "TSNE"))
+rownames(tmp_df) <- NULL
+names(tmp_df) <- paste0("perp50_tsne", 1:2)
+df_redDim_perp_50 <- data.frame(df_redDim, tmp_df)
+dim_red_plot(
+  data = df_redDim_perp_50, x = "perp50_tsne1", y = "perp50_tsne2",
+  col = "habib_cluster_name", type = "cat")
+```
+
+#### Perplexity = 100
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "runTSNE_perp100.rds")
+if (file.exists(rds)) {
+  runTSNE_perp100 <- readRDS(rds)
+} else {
+  runTSNE_perp100 <- runTSNE(sce, use_dimred = "PCA", perplexity = 100, rand_seed = 100)
+  saveRDS(runTSNE_perp100, rds)}
+```
+
+```{r}
+sce <- runTSNE_perp100
+tmp_df <- data.frame(reducedDim(sce, "TSNE"))
+rownames(tmp_df) <- NULL
+names(tmp_df) <- paste0("perp100_tsne", 1:2)
+df_redDim_perp_100 <- data.frame(df_redDim, tmp_df)
+plotly::ggplotly(dim_red_plot(
+  data = df_redDim_perp_100, x = "perp100_tsne1", y = "perp100_tsne2",
+  col = "habib_cluster_name", type = "cat"))
+```
+
+#### Perplexity = 200
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "runTSNE_perp200.rds")
+if (file.exists(rds)) {
+  runTSNE_perp200 <- readRDS(rds)
+} else {
+  runTSNE_perp200 <- runTSNE(sce, use_dimred = "PCA", perplexity = 200, rand_seed = 100)
+  saveRDS(runTSNE_perp200, rds)}
+```
+
+```{r}
+sce <- runTSNE_perp200
+tmp_df <- data.frame(reducedDim(sce, "TSNE"))
+rownames(tmp_df) <- NULL
+names(tmp_df) <- paste0("perp200_tsne", 1:2)
+df_redDim_perp_200 <- data.frame(df_redDim, tmp_df)
+dim_red_plot(
+  data = df_redDim_perp_200, x = "perp200_tsne1", y = "perp200_tsne2",
+  col = "habib_cluster_name", type = "cat")
+```
+
+#### Assessment
+
+As the tSNE with perplexity set to 100 appears to have the most similarity with that in @habib_massively_2017, we choose that one going forward.
+
+```{r}
+sce <- runTSNE_perp100
 tmp_df <- data.frame(reducedDim(sce, "TSNE"))
 rownames(tmp_df) <- NULL
 names(tmp_df) <- paste0("new_tsne", 1:2)
 df_redDim <- data.frame(df_redDim, tmp_df)
-rm(runTSNE)
+rm(
+  runTSNE_perp200, runTSNE_perp100, runTSNE_perp50,
+  df_redDim_perp_200, df_redDim_perp_100, df_redDim_perp_50)
 
 dim_red_plot(
   data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat")
@@ -702,24 +768,84 @@ dim_red_plot(
 
 ### tSNE
 
-Using our HVG PCs we calculate and plot the tSNEs.
+Using our HVG PCs we again plot tSNEs over a range of perplexity values.
+
+#### Perplexity = 50
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "Rtsne.rds")
+rds <- file.path(assets_dir, "cache", "Rtsne_perp50.rds")
 if (file.exists(rds)) {
-  Rtsne <- readRDS(rds)
+  Rtsne_perp50 <- readRDS(rds)
 } else {
   set.seed(100)
-  Rtsne <- Rtsne(pca, pca = FALSE, perplexity = 50)
-  saveRDS(Rtsne, rds)}
+  Rtsne_perp50 <- Rtsne(pca, pca = FALSE, perplexity = 50)
+  saveRDS(Rtsne_perp50, rds)}
 ```
 
 ```{r}
-tmp_df <- data.frame(Rtsne$Y)
+tmp_df <- data.frame(Rtsne_perp50$Y)
+names(tmp_df) <- paste0("perp50_tsne", seq(ncol(tmp_df)))
+df_hvg_perp50 <- data.frame(df_hvg, tmp_df)
+dim_red_plot(
+  data = df_hvg_perp50, x = "perp50_tsne1", y = "perp50_tsne2",
+  col = "habib_cluster_name", type = "cat")
+```
+
+#### Perplexity = 100
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "Rtsne_perp100.rds")
+if (file.exists(rds)) {
+  Rtsne_perp100 <- readRDS(rds)
+} else {
+  set.seed(100)
+  Rtsne_perp100 <- Rtsne(pca, pca = FALSE, perplexity = 100)
+  saveRDS(Rtsne_perp100, rds)}
+```
+
+```{r}
+tmp_df <- data.frame(Rtsne_perp100$Y)
+names(tmp_df) <- paste0("perp100_tsne", seq(ncol(tmp_df)))
+df_hvg_perp100 <- data.frame(df_hvg, tmp_df)
+dim_red_plot(
+  data = df_hvg_perp100, x = "perp100_tsne1", y = "perp100_tsne2",
+  col = "habib_cluster_name", type = "cat")
+```
+
+#### Perplexity = 200
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "Rtsne_perp200.rds")
+if (file.exists(rds)) {
+  Rtsne_perp200 <- readRDS(rds)
+} else {
+  set.seed(100)
+  Rtsne_perp200 <- Rtsne(pca, pca = FALSE, perplexity = 200)
+  saveRDS(Rtsne_perp200, rds)}
+```
+
+```{r}
+tmp_df <- data.frame(Rtsne_perp200$Y)
+names(tmp_df) <- paste0("perp200_tsne", seq(ncol(tmp_df)))
+df_hvg_perp200 <- data.frame(df_hvg, tmp_df)
+dim_red_plot(
+  data = df_hvg_perp200, x = "perp200_tsne1", y = "perp200_tsne2",
+  col = "habib_cluster_name", type = "cat")
+```
+
+#### Assessment
+
+Like the tSNE with all genes, we see that a perplexity value of 100 agrees best with @habib_massively_2017.
+It is also an improvement over the tSNEs using all genes, so we use this HVG tSNE for the rest of the analysis going forward.
+
+```{r}
+tmp_df <- data.frame(Rtsne_perp100$Y)
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df)
-reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne$Y)
-rm(Rtsne, pca, tmp_df)
+reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne_perp100$Y)
+rm(
+  Rtsne_perp200, Rtsne_perp100, Rtsne_perp50, df_hvg_perp200,
+  df_hvg_perp100, df_hvg_perp50, pca, tmp_df)
 
 dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat")
@@ -749,7 +875,6 @@ if (file.exists(rds)) {
   df_hvg <- readRDS(rds)
 } else {
   for (i in num_clust) {
-    cat(paste0("k-means with ", i, " clusters.\n"))
     kmeans_out <- kmeans(
       reducedDim(sce_hvg, "PCA"), centers = i, iter.max = 1e8,
       nstart = 2500, algorithm = "MacQueen")
