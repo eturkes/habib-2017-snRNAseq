@@ -110,14 +110,13 @@ sce_hvg
 ## Reproduction and Replication {.tabset}
 
 The below tabs display reproductions and replications of the results in @habib_massively_2017.
-Note that the new clusters currently lack cell-type labels, it is planned for these to be added.
-Furthermore, the cluster "Unlabeled2", corresponding to Cluster 17, is removed, as it was determined to be entirely composed of ribosomal cells.
-This cluster, as well as the other "Unlabeled" clusters, do not appear in the final figures of @habib_massively_2017.
+Note that the cluster "Unlabeled2", corresponding to Cluster 17, is removed, as it was determined to be entirely composed of ribosomal cells.
+This cluster, as well as the other "Unlabeled" clusters, do not appear in the final figures of @habib_massively_2017, but we include them here.
 Overall, it can be seen that our reproduction and replication of the results in @habib_massively_2017 agree well with the original publication.
 
 ```{r, include = FALSE}
 df_hvg <- plyr::rename(
-  df_hvg, c("habib_cluster_name" = "habib_clust", "km_17_clusters" = "km_clust"))
+  df_hvg, c("habib_cluster_name" = "habib_clust", "km_17_clusters_name" = "km_clust"))
 ```
 
 ### Habib Clusters Habib tSNE
@@ -764,19 +763,71 @@ if (file.exists(rds)) {
 names(df_hvg)
 ```
 
-## Comparison
+## Labeling
 
-Now that new clusters have been generated, we assess their agreement with those in @habib_massively_2017.
-
-### tSNE {.tabset}
-
-We visualize our clusters and those in @habib_massively_2017 using both their tSNE coordinates the the HVG tSNE calculated earlier.
+Next, we inspect our clusters alongside those in @habib_massively_2017 using tSNE.
 
 ```{r}
 vars <- c("habib_cluster_name", paste0("km_", num_clust, "_clusters"))
+for (i in vars) {
+  print(dim_red_plot(
+    data = df_hvg, x = "habib_tsne1", y = "habib_tsne2", col = i, type = "cat"))}
 ```
 
-#### Habib
+We see reasonable overlap between the two cluster sets, with some being split into multiple clusters in the new set and others being combined.
+We assign labels for the k-means clusters to the best of our ability based on their proximity with the clusters in @habib_massively_2017.
+
+```{r}
+df_hvg$km_17_clusters_name <- NA
+km_17_clusters <- as.integer(df_hvg$km_17_clusters)
+for (i in 1:length(km_17_clusters)) {
+  if (km_17_clusters[i] == 1) {
+    df_hvg[i, ncol(df_hvg)] <- "NSC"
+  } else if (km_17_clusters[i] == 2) {
+    df_hvg[i, ncol(df_hvg)] <- "OPC1"
+  } else if (km_17_clusters[i] == 3) {
+    df_hvg[i, ncol(df_hvg)] <- "END"
+  } else if (km_17_clusters[i] == 4) {
+    df_hvg[i, ncol(df_hvg)] <- "GABA2"
+  } else if (km_17_clusters[i] == 5) {
+    df_hvg[i, ncol(df_hvg)] <- "ODC2"
+  } else if (km_17_clusters[i] == 6) {
+    df_hvg[i, ncol(df_hvg)] <- "exCA1"
+  } else if (km_17_clusters[i] == 7) {
+    df_hvg[i, ncol(df_hvg)] <- "MG"
+  } else if (km_17_clusters[i] == 8) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC3"
+  } else if (km_17_clusters[i] == 9) {
+    df_hvg[i, ncol(df_hvg)] <- "exDG"
+  } else if (km_17_clusters[i] == 10) {
+    df_hvg[i, ncol(df_hvg)] <- "GABA1"
+  } else if (km_17_clusters[i] == 11) {
+    df_hvg[i, ncol(df_hvg)] <- "ODC3"
+  } else if (km_17_clusters[i] == 12) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC1"
+  } else if (km_17_clusters[i] == 13) {
+    df_hvg[i, ncol(df_hvg)] <- "exPFC"
+  } else if (km_17_clusters[i] == 14) {
+    df_hvg[i, ncol(df_hvg)] <- "OPC2"
+  } else if (km_17_clusters[i] == 15) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC2"
+  } else if (km_17_clusters[i] == 16) {
+    df_hvg[i, ncol(df_hvg)] <- "ODC1"
+  } else if (km_17_clusters[i] == 17) {
+    df_hvg[i, ncol(df_hvg)] <- "exCA3"}}
+```
+
+## Visualization {.tabset}
+
+Finally, we visualize the labeled clusters alongside those in @habib_massively_2017 using tSNE.
+
+```{r}
+vars <- c("habib_cluster_name", paste0("km_", num_clust, "_clusters_name"))
+```
+
+### Habib tSNE
+
+Using the tSNE coordinates in @habib_massively_2017.
 
 ```{r}
 for (i in vars) {
@@ -784,7 +835,9 @@ for (i in vars) {
     data = df_hvg, x = "habib_tsne1", y = "habib_tsne2", col = i, type = "cat"))}
 ```
 
-#### HVG
+### HVG
+
+Using the new tSNE based on HVGs.
 
 ```{r}
 for (i in vars) {
