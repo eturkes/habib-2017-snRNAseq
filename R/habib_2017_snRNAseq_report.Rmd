@@ -580,10 +580,11 @@ dim_red_plot(
   col = "log10_total_features_by_counts", type = "cont")
 ```
 
-### New
+### All Genes
 
-First we plot several tSNEs over a range of perplexity values to find the one that best represents our data.
-Rather large values are chosen to achieve tighter clusters similar to that in @habib_massively_2017.
+We first try replicating the tSNE in @habib_massively_2017 using all genes in the set.
+Several tSNEs are plotted over a range of perplexity values to find the one that best represents our data.
+As the perplexity value chosen in @habib_massively_2017 was 100, we center our range around that.
 
 #### Perplexity = 50
 
@@ -659,18 +660,19 @@ As the tSNE with perplexity set to 100 appears to have the most similarity with 
 sce <- runTSNE_perp100
 tmp_df <- data.frame(reducedDim(sce, "TSNE"))
 rownames(tmp_df) <- NULL
-names(tmp_df) <- paste0("new_tsne", 1:2)
+names(tmp_df) <- paste0("allgenes_tsne", 1:2)
 df_redDim <- data.frame(df_redDim, tmp_df)
 rm(
   runTSNE_perp200, runTSNE_perp100, runTSNE_perp50,
   df_redDim_perp_200, df_redDim_perp_100, df_redDim_perp_50)
 
 dim_red_plot(
-  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "habib_cluster_name", type = "cat")
+  data = df_redDim, x = "allgenes_tsne1", y = "allgenes_tsne2",
+  col = "habib_cluster_name", type = "cat")
 dim_red_plot(
-  data = df_redDim, x = "new_tsne1", y = "new_tsne2", col = "cell_id_stem", type = "cat")
+  data = df_redDim, x = "allgenes_tsne1", y = "allgenes_tsne2", col = "cell_id_stem", type = "cat")
 dim_red_plot(
-  data = df_redDim, x = "new_tsne1", y = "new_tsne2",
+  data = df_redDim, x = "allgenes_tsne1", y = "allgenes_tsne2",
   col = "log10_total_features_by_counts", type = "cont")
 ```
 
