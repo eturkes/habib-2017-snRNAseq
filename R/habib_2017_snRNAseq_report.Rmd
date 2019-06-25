@@ -164,8 +164,8 @@ We start by loading in any required packages and setting some global variables.
 ```{r}
 packages <- c(
   "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment", "biomaRt",
-  "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "BiocSingular",
-  "ggplot2", "plotly", "svd", "Rtsne", "S4Vectors")
+  "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran",
+  "BiocSingular", "ggplot2", "svd", "Rtsne", "S4Vectors")
 invisible(suppressPackageStartupMessages(lapply(packages, library, character.only = TRUE)))
 
 options(stringsAsFactors = FALSE)
@@ -624,9 +624,9 @@ tmp_df <- data.frame(reducedDim(sce, "TSNE"))
 rownames(tmp_df) <- NULL
 names(tmp_df) <- paste0("perp100_tsne", 1:2)
 df_redDim_perp_100 <- data.frame(df_redDim, tmp_df)
-plotly::ggplotly(dim_red_plot(
+dim_red_plot(
   data = df_redDim_perp_100, x = "perp100_tsne1", y = "perp100_tsne2",
-  col = "habib_cluster_name", type = "cat"))
+  col = "habib_cluster_name", type = "cat")
 ```
 
 #### Perplexity = 200
