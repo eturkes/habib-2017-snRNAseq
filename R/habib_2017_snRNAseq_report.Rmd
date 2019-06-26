@@ -644,6 +644,8 @@ dim_red_plot <- function(data, x, y, col, type) {
 
 ### Habib
 
+It should be noted that the tSNE coordinates provided were generated using HVGs, not all genes in the set.
+
 ```{r}
 label_df <- data.frame(
   habib_cluster_name = levels(df_allgenes$habib_cluster_name),
@@ -667,7 +669,7 @@ dim_red_plot(
 
 ### All Genes
 
-We first try replicating the tSNE in @habib_massively_2017 using all genes in the set, setting the perplexity to 100 as was done in the paper.
+We first see if the tSNE in @habib_massively_2017 replicates using all genes in the set, setting the perplexity to 100 as was done in the paper.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "runTSNE.rds")
@@ -693,6 +695,12 @@ dim_red_plot(
   data = df_allgenes, x = "allgenes_tsne1", y = "allgenes_tsne2",
   col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters All Genes tSNE")
+```
+
+Interestingly, when generating a tSNE using all genes, a batch effect is strongly seen in a subset of the hippocampal samples.
+As we will see later, these disappear when using HVGs, suggesting that it is in part driven by technical rather than biological variance.
+
+```{r}
 dim_red_plot(
   data = df_allgenes, x = "allgenes_tsne1", y = "allgenes_tsne2",
   col = "cell_id_stem", type = "other") +
@@ -702,6 +710,9 @@ dim_red_plot(
   col = "log10_total_features_by_counts", type = "cont") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) Habib tSNE")
 ```
+
+While the resulting plots bear decent resemblance to those in @habib_massively_2017, there are some significant differences as well.
+We make another attempt using HVGs like in the original protocol to see if the situation is improved.
 
 ## HVG
 
@@ -800,7 +811,6 @@ plotPCA(sce_hvg, ncomponents = 4, colour_by = "habib_cluster_name")  +
 ### tSNE
 
 Like the tSNE with all genes, we use a perplexity value of 100.
-It can be seen that the HVG tSNE is an improvement over the tSNE using all genes, so we use this tSNE for the analysis going forward.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "Rtsne.rds")
@@ -829,6 +839,11 @@ label_df2 <- df_hvg %>%
 dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG tSNE")
+```
+
+Take note that the batch effect seen earlier when using all genes have largely disappeared.
+
+```{r}
 dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "cell_id_stem", type = "other") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Sample Distribution HVG tSNE")
@@ -837,6 +852,8 @@ dim_red_plot(
   col = "log10_total_features_by_counts", type = "cont") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) Habib tSNE")
 ```
+
+It can be seen that the HVG tSNE is indeed improvement over the tSNE using all genes, so we use this tSNE for the analysis going forward.
 
 # Clustering
 
