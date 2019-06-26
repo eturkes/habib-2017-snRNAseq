@@ -42,7 +42,7 @@ knit:
 #
 #    Emir Turkes can be contacted at emir.turkes@eturkes.com
 
-knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7, error = TRUE)
+knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7)
 ```
 
 <style type="text/css">
@@ -75,27 +75,30 @@ The source code and instructions for rerunning the analysis can be found at [git
 **Read just the following sub-sections (1.1-1.2) for the final results of the analysis and a brief summary of the methods.**
 
 ```{r, include = FALSE}
+library("magrittr")
+
 results_dir <- file.path(getwd(), "..", "results")
 
 # Define a custom function for plotting.
 dim_red_plot <- function(data, x, y, col, type) {
-  gg <- ggplot(data, aes_string(x = x, y = y, color = col)) +
-    geom_point(alpha = 0.35, stroke = 0.05, shape = 21, aes_string(fill = col)) +
-    theme_classic() +
-    theme(
-      legend.position = "right", plot.title = element_text(hjust = 0.5),
-      legend.title = element_blank()) +
-    guides(color = guide_legend(override.aes = list(alpha = 1)))
+  gg <- ggplot2::ggplot(data, ggplot2::aes_string(x = x, y = y, color = col)) +
+    ggplot2::geom_point(alpha = 0.35, stroke = 0.05, shape = 21, ggplot2::aes_string(fill = col)) +
+    ggplot2::theme_classic() +
+    ggplot2::theme(
+      legend.position = "right", plot.title = ggplot2::element_text(hjust = 0.5),
+      legend.title = ggplot2::element_blank()) +
+    ggplot2::guides(color = ggplot2::guide_legend(override.aes = list(alpha = 1)))
     if (type == "cat") {
-      gg <- gg + geom_label_repel(data = label_df2, aes(label = label), show.legend = FALSE)}
+      gg <- gg + ggrepel::geom_label_repel(
+        data = label_df2, ggplot2::aes(label = label), show.legend = FALSE)}
     else if (type == "cont") {
-      gg <- ggplot(data, aes_string(x = x, y = y)) +
-        geom_point(alpha = 0.35, stroke = 0.05, aes_string(color = col)) +
-        theme_classic() +
-        theme(
-          legend.position = "right", plot.title = element_text(hjust = 0.5),
-          legend.title = element_blank()) +
-        scale_colour_gradient(low = "blue", high = "red")}
+      gg <- ggplot2::ggplot(data, ggplot2::aes_string(x = x, y = y)) +
+        ggplot2::geom_point(alpha = 0.35, stroke = 0.05, ggplot2::aes_string(color = col)) +
+        ggplot2::theme_classic() +
+        ggplot2::theme(
+          legend.position = "right", plot.title = ggplot2::element_text(hjust = 0.5),
+          legend.title = ggplot2::element_blank()) +
+        ggplot2::scale_colour_gradient(low = "blue", high = "red")}
   gg}
 
 sce <- readRDS(file.path(results_dir, "data", "sce.rds"))
@@ -143,12 +146,12 @@ The original clusters and tSNE coordinates.
 label_df <- data.frame(
   habib_cluster_name = levels(df_hvg$habib_cluster_name), label = levels(df_hvg$habib_cluster_name))
 label_df2 <- df_hvg %>%
-  group_by(habib_cluster_name) %>%
-  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
-  left_join(label_df)
+  dplyr::group_by(habib_cluster_name) %>%
+  dplyr::summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
+  dplyr::left_join(label_df)
 dim_red_plot(
   data = df_hvg, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
+  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("Habib Clusters Habib tSNE")
 ```
 
 ### New Clusters Habib tSNE
@@ -160,12 +163,12 @@ label_df <- data.frame(
   km_17_clusters_name = levels(df_hvg$km_17_clusters_name),
   label = levels(df_hvg$km_17_clusters_name))
 label_df2 <- df_hvg %>%
-  group_by(km_17_clusters_name) %>%
-  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
-  left_join(label_df)
+  dplyr::group_by(km_17_clusters_name) %>%
+  dplyr::summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
+  dplyr::left_join(label_df)
 dim_red_plot(
   data = df_hvg, x = "habib_tsne1", y = "habib_tsne2", col = "km_17_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("New Clusters Habib tSNE")
+  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("New Clusters Habib tSNE")
 ```
 
 ### Habib Clusters New tSNE
@@ -176,12 +179,12 @@ The original clusters with new tSNE coordinates based on HVGs (highly variable g
 label_df <- data.frame(
   habib_cluster_name = levels(df_hvg$habib_cluster_name), label = levels(df_hvg$habib_cluster_name))
 label_df2 <- df_hvg %>%
-  group_by(habib_cluster_name) %>%
-  summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
-  left_join(label_df)
+  dplyr::group_by(habib_cluster_name) %>%
+  dplyr::summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
+  dplyr::left_join(label_df)
 dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters New tSNE")
+  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("Habib Clusters New tSNE")
 ```
 
 ### New Clusters New tSNE
@@ -190,14 +193,15 @@ The new clusters and tSNE coordinates.
 
 ```{r, echo = FALSE, message = FALSE}
 label_df <- data.frame(
-  km_17_clusters_name = levels(df_hvg$km_17_clusters_name), label = levels(df_hvg$km_17_clusters_name))
+  km_17_clusters_name = levels(df_hvg$km_17_clusters_name),
+  label = levels(df_hvg$km_17_clusters_name))
 label_df2 <- df_hvg %>%
-  group_by(km_17_clusters_name) %>%
-  summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
-  left_join(label_df)
+  dplyr::group_by(km_17_clusters_name) %>%
+  dplyr::summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
+  dplyr::left_join(label_df)
 dim_red_plot(
   data = df_hvg, x = "hvg_tsne1", y = "hvg_tsne2", col = "km_17_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("New Clusters New tSNE")
+  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("New Clusters New tSNE")
 ```
 
 # ~~~ Breakdown of Methods ~~~ {-}
@@ -253,7 +257,7 @@ datatable(counts[1:5, 1:3])
 # Specifically in clusters 15-18, which do not match those in the original publication.
 # Therefore we use Supplementary Table 7 (nmeth.4407-S10.xlsx), which does not have those issues.
 # However, because cluster 11 is incorrectly named in this table, we must correct that.
-# Also, as this file contained non-standard formatting, minimal manual editing was done for use with R.
+# Also, as this file contained non-standard formatting, minimal manual editing was done for use in R.
 clust <- fread(file.path(assets_dir, "nmeth.4407-S10-edited.txt"), data.table = FALSE)
 datatable(clust[1:5, ])
 ```
@@ -286,7 +290,7 @@ counts <- Matrix::Matrix(counts, sparse = TRUE)
 
 ```{r}
 # Fix mislabeled cluster name and give unique names for unclassified clusters.
-for (i in 1:nrow(clust)) {
+for (i in seq_len(nrow(clust))) {
   if (clust[i, 4] == 11) {
     clust[i, 5] <- "ODC2"
   } else if (clust[i, 4] == 16) {
@@ -453,7 +457,7 @@ mito_drop <- isOutlier(sce$pct_counts_Mt, nmads = 3, type = "higher")
 ribo_drop <- isOutlier(sce$pct_counts_Ri, nmads = 3, type = "higher")
 keep <- !(libsize_drop | feature_drop | mito_drop | ribo_drop)
 kable(table(colData(sce)$habib_cluster, keep), row.names = TRUE) %>%
-  kable_styling(full_width = FALSE, position = "left")
+  kable_styling(bootstrap_options = "striped", font_size = 10, full_width = FALSE, position = "left")
 ```
 
 It should be noted that all cells in Cluster 17 are identified as ribosomal genes and thus removed.
@@ -461,7 +465,7 @@ It should be noted that all cells in Cluster 17 are identified as ribosomal gene
 ```{r}
 except_ribo_keep <- !(libsize_drop | feature_drop | mito_drop)
 kable(table(colData(sce)$habib_cluster, except_ribo_keep), row.names = TRUE) %>%
-  kable_styling(full_width = FALSE, position = "left")
+  kable_styling(bootstrap_options = "striped", font_size = 10, full_width = FALSE, position = "left")
 ```
 
 ```{r}
@@ -648,7 +652,8 @@ label_df2 <- df_allgenes %>%
   summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
   left_join(label_df)
 dim_red_plot(
-  data = df_allgenes, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat") +
+  data = df_allgenes, x = "habib_tsne1", y = "habib_tsne2",
+  col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
 dim_red_plot(
   data = df_allgenes, x = "habib_tsne1", y = "habib_tsne2", col = "cell_id_stem", type = "other") +
@@ -794,6 +799,7 @@ plotPCA(sce_hvg, ncomponents = 4, colour_by = "habib_cluster_name")  +
 ### tSNE
 
 Like the tSNE with all genes, we use a perplexity value of 100.
+It can be seen that the HVG tSNE is an improvement over the tSNE using all genes, so we use this tSNE for the analysis going forward.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "Rtsne.rds")
@@ -806,7 +812,7 @@ if (file.exists(rds)) {
 ```
 
 ```{r}
-reducedDims(sce_hvg) <- SimpleList(TSNE = Rtsne$Y)
+reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne$Y)
 tmp_df <- data.frame(reducedDim(sce_hvg, "TSNE"))
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df)
@@ -830,8 +836,6 @@ dim_red_plot(
   col = "log10_total_features_by_counts", type = "cont") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) Habib tSNE")
 ```
-
-We see that the HVG tSNE is an improvement over the tSNE using all genes, so we use this tSNE for the analysis going forward.
 
 # Clustering
 
@@ -867,46 +871,71 @@ names(df_hvg)
 
 ## Labeling
 
-We assign labels for the k-means clusters to the best of our ability based on their proximity with the clusters in @habib_massively_2017 and add them to the `sce_hvg` object.
+Next, we inspect our clusters alongside those in @habib_massively_2017 using tSNE.
+
+```{r}
+label_df <- data.frame(
+  km_17_clusters = levels(df_hvg$km_17_clusters), label = levels(df_hvg$km_17_clusters))
+label_df2 <- df_hvg %>%
+  group_by(km_17_clusters) %>%
+  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
+  left_join(label_df)
+dim_red_plot(
+  data = df_hvg, x = "habib_tsne1", y = "habib_tsne2", col = "km_17_clusters", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("New Clusters Habib tSNE")
+
+label_df <- data.frame(
+  habib_cluster_name = levels(df_hvg$habib_cluster_name), label = levels(df_hvg$habib_cluster_name))
+label_df2 <- df_hvg %>%
+  group_by(habib_cluster_name) %>%
+  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
+  left_join(label_df)
+dim_red_plot(
+  data = df_hvg, x = "habib_tsne1", y = "habib_tsne2",col = "habib_cluster_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
+```
+
+We see reasonable overlap between the two cluster sets, with some being split into multiple clusters in the new set and others being combined.
+We assign labels for the k-means clusters to the best of our ability based on their proximity with the clusters in @habib_massively_2017.
 
 ```{r}
 df_hvg$km_17_clusters_name <- NA
 km_17_clusters <- as.integer(df_hvg$km_17_clusters)
 for (i in 1:length(km_17_clusters)) {
   if (km_17_clusters[i] == 1) {
-    df_hvg[i, ncol(df_hvg)] <- "NSC"
-  } else if (km_17_clusters[i] == 2) {
-    df_hvg[i, ncol(df_hvg)] <- "OPC1"
-  } else if (km_17_clusters[i] == 3) {
-    df_hvg[i, ncol(df_hvg)] <- "END"
-  } else if (km_17_clusters[i] == 4) {
-    df_hvg[i, ncol(df_hvg)] <- "GABA2"
-  } else if (km_17_clusters[i] == 5) {
-    df_hvg[i, ncol(df_hvg)] <- "ODC2"
-  } else if (km_17_clusters[i] == 6) {
-    df_hvg[i, ncol(df_hvg)] <- "exCA1"
-  } else if (km_17_clusters[i] == 7) {
-    df_hvg[i, ncol(df_hvg)] <- "MG"
-  } else if (km_17_clusters[i] == 8) {
-    df_hvg[i, ncol(df_hvg)] <- "ASC3"
-  } else if (km_17_clusters[i] == 9) {
-    df_hvg[i, ncol(df_hvg)] <- "exDG"
-  } else if (km_17_clusters[i] == 10) {
-    df_hvg[i, ncol(df_hvg)] <- "GABA1"
-  } else if (km_17_clusters[i] == 11) {
-    df_hvg[i, ncol(df_hvg)] <- "ODC3"
-  } else if (km_17_clusters[i] == 12) {
-    df_hvg[i, ncol(df_hvg)] <- "ASC1"
-  } else if (km_17_clusters[i] == 13) {
-    df_hvg[i, ncol(df_hvg)] <- "exPFC"
-  } else if (km_17_clusters[i] == 14) {
-    df_hvg[i, ncol(df_hvg)] <- "OPC2"
-  } else if (km_17_clusters[i] == 15) {
     df_hvg[i, ncol(df_hvg)] <- "ASC2"
-  } else if (km_17_clusters[i] == 16) {
+  } else if (km_17_clusters[i] == 2) {
+    df_hvg[i, ncol(df_hvg)] <- "MG"
+  } else if (km_17_clusters[i] == 3) {
+    df_hvg[i, ncol(df_hvg)] <- "GABA2"
+  } else if (km_17_clusters[i] == 4) {
+    df_hvg[i, ncol(df_hvg)] <- "OPC2"
+  } else if (km_17_clusters[i] == 5) {
+    df_hvg[i, ncol(df_hvg)] <- "END"
+  } else if (km_17_clusters[i] == 6) {
+    df_hvg[i, ncol(df_hvg)] <- "OPC1"
+  } else if (km_17_clusters[i] == 7) {
+    df_hvg[i, ncol(df_hvg)] <- "exDG"
+  } else if (km_17_clusters[i] == 8) {
+    df_hvg[i, ncol(df_hvg)] <- "exPFC"
+  } else if (km_17_clusters[i] == 9) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC3"
+  } else if (km_17_clusters[i] == 10) {
     df_hvg[i, ncol(df_hvg)] <- "ODC1"
+  } else if (km_17_clusters[i] == 11) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC1"
+  } else if (km_17_clusters[i] == 12) {
+    df_hvg[i, ncol(df_hvg)] <- "NSC"
+  } else if (km_17_clusters[i] == 13) {
+    df_hvg[i, ncol(df_hvg)] <- "exCA3"
+  } else if (km_17_clusters[i] == 14) {
+    df_hvg[i, ncol(df_hvg)] <- "exCA1"
+  } else if (km_17_clusters[i] == 15) {
+    df_hvg[i, ncol(df_hvg)] <- "GABA1"
+  } else if (km_17_clusters[i] == 16) {
+    df_hvg[i, ncol(df_hvg)] <- "ODC2"
   } else if (km_17_clusters[i] == 17) {
-    df_hvg[i, ncol(df_hvg)] <- "exCA3"}}
+    df_hvg[i, ncol(df_hvg)] <- "ODC3"}}
 
 colData(sce_hvg) <- cbind(
   colData(sce_hvg), km_17_clusters = df_hvg$km_17_clusters,
@@ -924,7 +953,8 @@ Overall, we see strong agreement with the original publication.
 
 ```{r}
 label_df <- data.frame(
-  km_17_clusters_name = levels(df_hvg$km_17_clusters_name), label = levels(df_hvg$km_17_clusters_name))
+  km_17_clusters_name = levels(df_hvg$km_17_clusters_name),
+  label = levels(df_hvg$km_17_clusters_name))
 label_df2 <- df_hvg %>%
   group_by(km_17_clusters_name) %>%
   summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
@@ -952,7 +982,8 @@ dim_red_plot(
 
 ```{r}
 label_df <- data.frame(
-  km_17_clusters_name = levels(df_hvg$km_17_clusters_name), label = levels(df_hvg$km_17_clusters_name))
+  km_17_clusters_name = levels(df_hvg$km_17_clusters_name),
+  label = levels(df_hvg$km_17_clusters_name))
 label_df2 <- df_hvg %>%
   group_by(km_17_clusters_name) %>%
   summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
