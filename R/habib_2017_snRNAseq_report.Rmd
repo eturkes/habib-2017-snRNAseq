@@ -404,7 +404,7 @@ legend(
 # if (file.exists(rds)) {
 #   e_out <- readRDS(rds)
 # } else {
-#   set.seed(100)
+#   set.seed(1)
 #   e_out <- emptyDrops(counts(sce))
 #   saveRDS(e_out, rds)}
 ```
@@ -449,6 +449,7 @@ smoothScatter(
 ```
 
 We then use the `isOutlier` function from `scater` to remove the the mitochondrial/ribosomal cells as well as cells determined to be low quality by their library size and feature counts.
+In the table below, "TRUE" indicates cells that are kept.
 
 ```{r}
 libsize_drop <- isOutlier(sce$total_counts, nmads = 3, type = "lower", log = TRUE)
@@ -456,16 +457,16 @@ feature_drop <- isOutlier(sce$total_features_by_counts, nmads = 3, type = "lower
 mito_drop <- isOutlier(sce$pct_counts_Mt, nmads = 3, type = "higher")
 ribo_drop <- isOutlier(sce$pct_counts_Ri, nmads = 3, type = "higher")
 keep <- !(libsize_drop | feature_drop | mito_drop | ribo_drop)
-kable(table(colData(sce)$habib_cluster, keep), row.names = TRUE) %>%
-  kable_styling(bootstrap_options = "striped", font_size = 10, full_width = FALSE, position = "left")
+kable(table(colData(sce)$habib_cluster, keep), row.names = TRUE, padding = 0) %>%
+  kable_styling(bootstrap_options = "striped", font_size = 13, full_width = FALSE, position = "left")
 ```
 
 It should be noted that all cells in Cluster 17 are identified as ribosomal genes and thus removed.
 
 ```{r}
 except_ribo_keep <- !(libsize_drop | feature_drop | mito_drop)
-kable(table(colData(sce)$habib_cluster, except_ribo_keep), row.names = TRUE) %>%
-  kable_styling(bootstrap_options = "striped", font_size = 10, full_width = FALSE, position = "left")
+kable(table(colData(sce)$habib_cluster, except_ribo_keep), row.names = TRUE, padding = 0) %>%
+  kable_styling(bootstrap_options = "striped", font_size = 13, full_width = FALSE, position = "left")
 ```
 
 ```{r}
@@ -673,7 +674,7 @@ rds <- file.path(assets_dir, "cache", "runTSNE.rds")
 if (file.exists(rds)) {
   runTSNE <- readRDS(rds)
 } else {
-  runTSNE <- runTSNE(sce, use_dimred = "PCA", perplexity = 100, rand_seed = 100)
+  runTSNE <- runTSNE(sce, use_dimred = "PCA", perplexity = 100, rand_seed = 1)
   saveRDS(runTSNE, rds)}
 ```
 
@@ -806,7 +807,7 @@ rds <- file.path(assets_dir, "cache", "Rtsne.rds")
 if (file.exists(rds)) {
   Rtsne <- readRDS(rds)
 } else {
-  set.seed(100)
+  set.seed(1)
   Rtsne <- Rtsne(pca, pca = FALSE, perplexity = 100)
   saveRDS(Rtsne, rds)}
 ```
@@ -846,26 +847,20 @@ In this section, we will see if we can replicate those clusters.
 
 We apply a k-means method atop the 50 PCs generated earlier, choosing to generate 17 clusters, like in the original paper.
 
-```{r}
-num_clust <- c(17)
-```
-
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "df_hvg.rds")
+rds <- file.path(assets_dir, "cache", "km_out.rds")
 if (file.exists(rds)) {
-  df_hvg <- readRDS(rds)
+  km_out <- readRDS(rds)
+  df_hvg$km_17_clusters <- as.factor(km_out$cluster)
 } else {
-  for (i in num_clust) {
-    kmeans_out <- kmeans(
-      reducedDim(sce_hvg, "PCA"), centers = i, iter.max = 1e8,
-      nstart = 2500, algorithm = "MacQueen")
-    km_label <- paste0("km_", i, "_clusters")
-    df_hvg[[km_label]] <- as.factor(kmeans_out$cluster)
-    rm(kmeans_out)}
-  saveRDS(df_hvg, rds)}
+  km_out <- kmeans(
+    reducedDim(sce_hvg, "PCA"), centers = 17, iter.max = 1e8, nstart = 2500, algorithm = "MacQueen")
+  df_hvg$km_17_clusters <- as.factor(km_out$cluster)
+  saveRDS(km_out, rds)}
 ```
 
 ```{r}
+rm(km_out)
 names(df_hvg)
 ```
 
@@ -903,39 +898,39 @@ df_hvg$km_17_clusters_name <- NA
 km_17_clusters <- as.integer(df_hvg$km_17_clusters)
 for (i in 1:length(km_17_clusters)) {
   if (km_17_clusters[i] == 1) {
-    df_hvg[i, ncol(df_hvg)] <- "ASC2"
-  } else if (km_17_clusters[i] == 2) {
-    df_hvg[i, ncol(df_hvg)] <- "MG"
-  } else if (km_17_clusters[i] == 3) {
-    df_hvg[i, ncol(df_hvg)] <- "GABA2"
-  } else if (km_17_clusters[i] == 4) {
-    df_hvg[i, ncol(df_hvg)] <- "OPC2"
-  } else if (km_17_clusters[i] == 5) {
-    df_hvg[i, ncol(df_hvg)] <- "END"
-  } else if (km_17_clusters[i] == 6) {
-    df_hvg[i, ncol(df_hvg)] <- "OPC1"
-  } else if (km_17_clusters[i] == 7) {
-    df_hvg[i, ncol(df_hvg)] <- "exDG"
-  } else if (km_17_clusters[i] == 8) {
-    df_hvg[i, ncol(df_hvg)] <- "exPFC"
-  } else if (km_17_clusters[i] == 9) {
-    df_hvg[i, ncol(df_hvg)] <- "ASC3"
-  } else if (km_17_clusters[i] == 10) {
-    df_hvg[i, ncol(df_hvg)] <- "ODC1"
-  } else if (km_17_clusters[i] == 11) {
-    df_hvg[i, ncol(df_hvg)] <- "ASC1"
-  } else if (km_17_clusters[i] == 12) {
-    df_hvg[i, ncol(df_hvg)] <- "NSC"
-  } else if (km_17_clusters[i] == 13) {
-    df_hvg[i, ncol(df_hvg)] <- "exCA3"
-  } else if (km_17_clusters[i] == 14) {
-    df_hvg[i, ncol(df_hvg)] <- "exCA1"
-  } else if (km_17_clusters[i] == 15) {
     df_hvg[i, ncol(df_hvg)] <- "GABA1"
-  } else if (km_17_clusters[i] == 16) {
+  } else if (km_17_clusters[i] == 2) {
+    df_hvg[i, ncol(df_hvg)] <- "OPC2"
+  } else if (km_17_clusters[i] == 3) {
     df_hvg[i, ncol(df_hvg)] <- "ODC2"
+  } else if (km_17_clusters[i] == 4) {
+    df_hvg[i, ncol(df_hvg)] <- "exCA1"
+  } else if (km_17_clusters[i] == 5) {
+    df_hvg[i, ncol(df_hvg)] <- "exPFC"
+  } else if (km_17_clusters[i] == 6) {
+    df_hvg[i, ncol(df_hvg)] <- "MG"
+  } else if (km_17_clusters[i] == 7) {
+    df_hvg[i, ncol(df_hvg)] <- "ODC1"
+  } else if (km_17_clusters[i] == 8) {
+    df_hvg[i, ncol(df_hvg)] <- "exCA3"
+  } else if (km_17_clusters[i] == 9) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC1"
+  } else if (km_17_clusters[i] == 10) {
+    df_hvg[i, ncol(df_hvg)] <- "OPC1"
+  } else if (km_17_clusters[i] == 11) {
+    df_hvg[i, ncol(df_hvg)] <- "NSC"
+  } else if (km_17_clusters[i] == 12) {
+    df_hvg[i, ncol(df_hvg)] <- "exDG"
+  } else if (km_17_clusters[i] == 13) {
+    df_hvg[i, ncol(df_hvg)] <- "ODC3"
+  } else if (km_17_clusters[i] == 14) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC2"
+  } else if (km_17_clusters[i] == 15) {
+    df_hvg[i, ncol(df_hvg)] <- "END"
+  } else if (km_17_clusters[i] == 16) {
+    df_hvg[i, ncol(df_hvg)] <- "ASC3"
   } else if (km_17_clusters[i] == 17) {
-    df_hvg[i, ncol(df_hvg)] <- "ODC3"}}
+    df_hvg[i, ncol(df_hvg)] <- "GABA2"}}
 
 colData(sce_hvg) <- cbind(
   colData(sce_hvg), km_17_clusters = df_hvg$km_17_clusters,
