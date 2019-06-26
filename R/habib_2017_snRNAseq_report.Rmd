@@ -759,8 +759,8 @@ dec1$bio[which(dec$bio < 1e-5)] <- 1e-5
 dec1$FDR[which(dec$FDR < 1e-100)] <- 1e-100
 rm(top_dec)
 
-kable(table(dec$FDR < 1e-10, dec$bio > 0.014), row.names = TRUE) %>%
-  kable_styling(full_width = FALSE, position = "left")
+kable(table(dec$FDR < 1e-10, dec$bio > 0.014), row.names = TRUE, padding = 0) %>%
+  kable_styling(bootstrap_options = "striped", font_size = 13, full_width = FALSE, position = "left")
 par(mfrow = c(1, 2))
 hist(log10(dec1$bio), breaks = 100, main = "")
 hist(log10(dec1$FDR), breaks = 100, main = "")
