@@ -443,7 +443,7 @@ legend(
 
 ## Mito/Ribo Genes
 
-Using an annotation from [HGNC](https://www.genenames.org/), we first assess the mitochondrial/ribosomal gene population using histograms and scatter plots.
+Using an annotation from [HGNC](https://www.genenames.org/), we assess the proportion of mitochondrial/ribosomal genes within the cells.
 
 ```{r}
 ribo_genes <- read.table(file.path(assets_dir, "ribo-genes.txt"), sep = "\t", header = TRUE)
@@ -480,8 +480,10 @@ smoothScatter(
   ylab = "Mitochondrial Proportion %")
 ```
 
-We then use the `isOutlier` function from `scater` to remove the the mitochondrial/ribosomal cells as well as cells determined to be low quality by their library size and feature counts.
+We then use the `isOutlier` function from `scater` to remove cells with an overabundance of mitochondrial/ribosomal gene expression, as these are likely to be damaged cells.
+We also remove cells determined to be low quality by their library size and feature counts.
 In the table below, "TRUE" indicates cells that are kept.
+It should be noted that all cells in Cluster 17 are determined to be low quality do to their ribosomal gene expression, and thus removed.
 
 ```{r}
 libsize_drop <- isOutlier(sce$total_counts, nmads = 3, type = "lower", log = TRUE)
@@ -491,17 +493,7 @@ ribo_drop <- isOutlier(sce$pct_counts_Ri, nmads = 3, type = "higher")
 keep <- !(libsize_drop | feature_drop | mito_drop | ribo_drop)
 kable(table(colData(sce)$habib_cluster, keep), row.names = TRUE, padding = 0) %>%
   kable_styling(bootstrap_options = "striped", font_size = 13, full_width = FALSE, position = "left")
-```
 
-It should be noted that all cells in Cluster 17 are identified as ribosomal genes and thus removed.
-
-```{r}
-except_ribo_keep <- !(libsize_drop | feature_drop | mito_drop)
-kable(table(colData(sce)$habib_cluster, except_ribo_keep), row.names = TRUE, padding = 0) %>%
-  kable_styling(bootstrap_options = "striped", font_size = 13, full_width = FALSE, position = "left")
-```
-
-```{r}
 sce <- sce[ , keep]
 dim(sce)
 ```
@@ -525,7 +517,7 @@ plot(
   xlab = "log10(Average Number of UMI + 1e-6)", ylab = "log10(Number of Expressed Cells + 1)")
 ```
 
-We then remove genes as necessary and view the summary statistics again.
+We remove genes as necessary and view the summary statistics again.
 
 ```{r}
 names(rowData(sce))[names(rowData(sce)) == "strand"] <- "strand_n" # Must be renamed due to error.
@@ -551,9 +543,9 @@ plot(
 ## Normalization
 
 We use `computeSumFactors` from the `scran` package to perform normalization.
-This function uses a linear deconvolution system to account for expected variation across different cell types/sizes [@l_lun_pooling_2016].
-We also remove cells that have size factors from the function that are very small ($< 0.01$) or negative.
-To verify that the method is appropriate for our data, we start by plotting each cell's size factor against their total counts.
+This function uses a linear deconvolution system to account for expected variation across different cell types/sizes [@l_lun_pooling_2016], producing "scale factor" values that indicates the extent to which a cell should be scaled.
+For additional QC, we also remove cells that have size factors from the function that are very small ($< 0.01$) or negative.
+In an experiment where most systematic differences between cells are driven by capture efficiency and sequencing depth, we should see a correlation between size factors and library size, so we visualize this.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "quickCluster.rds")
@@ -587,7 +579,7 @@ plot(
 abline(h = 0.05)
 ```
 
-As the two plots appear to be highly correlated, we go ahead and perform the normalization.
+The plots are very well-correlated, which not only confirm the source of bias but also indicate that the previous QC steps were sufficient, therefore we go ahead and normalize the data.
 
 ```{r}
 sce <- normalize(sce)
