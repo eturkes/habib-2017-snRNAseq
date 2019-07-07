@@ -1,4 +1,4 @@
-#    This file is part of tau-vulnerability.
+#    This file is part of habib-2017-snRNAseq.
 #    Copyright (C) 2019  Emir Turkes
 #
 #    This program is free software: you can redistribute it and/or modify
