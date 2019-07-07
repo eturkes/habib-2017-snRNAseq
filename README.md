@@ -26,3 +26,12 @@ Analysis of Habib 2017 snRNAseq data
 In order to run and view the results of this analysis, the prerequisite data is required.
 Please contact me at emir.turkes@eturkes.com if you are interested.
 Otherwise, feel free to reuse this codebase in accordance with the license.
+
+A Docker image for this project is available from [DockerHub](https://cloud.docker.com/repository/docker/eturkes/habib-2017-snRNAseq/general).  
+This is the recommended way to reproduce and explore the project.  
+
+To open RStudio, run:
+```
+docker-compose up rstudio
+```
+It will be available in your web browser at the address [localhost:8787](http://localhost:8790).
