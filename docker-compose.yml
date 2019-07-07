@@ -20,13 +20,13 @@ version: "3"
 
 services:
   all:
-    image: eturkes/habib-2017-snRNAseq:R3.6.0v1
+    image: eturkes/habib-2017-snrnaseq:R3.6.0v1
     volumes:
       - ".:/habib-2017-snRNAseq:rw"
     command: Rscript -e "source('/habib-2017-snRNAseq/R/run_all.R')"
 
   rstudio:
-    image: eturkes/habib-2017-snRNAseq:R3.6.0v1
+    image: eturkes/habib-2017-snrnaseq:R3.6.0v1
     volumes:
       - ".:/habib-2017-snRNAseq:rw"
     ports:
