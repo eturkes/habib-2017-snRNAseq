@@ -1,3 +1,6 @@
+# Publicly available data that do not need to be backed up
+/data/
+
 # History files
 .Rhistory
 .Rapp.history
