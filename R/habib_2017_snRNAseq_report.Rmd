@@ -134,7 +134,7 @@ habib_tsne <- data.frame(reducedDim(sce, "habib_tsne"))
 names(habib_tsne) <- paste0("habib_tsne", seq(ncol(habib_tsne)))
 df_hvg <- data.frame(
   colData(sce_hvg)[ , c(
-    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
+    "sample", "cell_id_stem", "log10_total_features_by_counts",
     "habib_cluster", "habib_cluster_name", "km_17_clusters_name")],
   habib_tsne,
   tmp_df)
