@@ -130,13 +130,10 @@ Overall, it can be seen that our reproduction and replication of the results in 
 # Set up data frame for ggplot2.
 tmp_df <- data.frame(reducedDim(sce_hvg, "TSNE"))
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
-habib_tsne <- data.frame(reducedDim(sce, "habib_tsne"))
-names(habib_tsne) <- paste0("habib_tsne", seq(ncol(habib_tsne)))
 df_hvg <- data.frame(
   colData(sce_hvg)[ , c(
-    "sample", "cell_id_stem", "log10_total_features_by_counts",
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
     "habib_cluster", "habib_cluster_name", "km_17_clusters_name")],
-  habib_tsne,
   tmp_df)
 rownames(df_hvg) <- NULL
 df_hvg$habib_cluster_name <- factor(df_hvg$habib_cluster_name)
@@ -346,9 +343,7 @@ datatable(clust[1:5, ])
 ## tSNE
 
 ```{r}
-rownames(tsne) <- tsne[ , 1]
-tsne <- as.matrix(tsne[ , -1])
-colnames(tsne) <- NULL
+names(tsne) = c("sample", paste0("habib_tsne", 1:2))
 datatable(tsne[1:5, ])
 ```
 
@@ -357,10 +352,8 @@ datatable(tsne[1:5, ])
 The data is now sufficiently prepared to form a SingleCellExperiment (SCE) object.
 
 ```{r}
-col_dat <- cbind(col_dat, clust[ , names(clust) != "sample"])
-sce <- SingleCellExperiment(
-  assays = list(counts = counts), colData = col_dat,
-  reducedDims = SimpleList(habib_tsne = tsne))
+col_dat <- cbind(col_dat, clust[ , names(clust) != "sample"], tsne[ , names(tsne) != "sample"])
+sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
 rm(counts, clust, tsne, col_dat)
 sce
 ```
@@ -620,13 +613,10 @@ if (file.exists(rds)) {
 sce <- pca
 tmp_df <- data.frame(reducedDim(sce, "PCA"))
 names(tmp_df) <- paste0("allgenes_pc", seq(ncol(tmp_df)))
-habib_tsne <- data.frame(reducedDim(sce, "habib_tsne"))
-names(habib_tsne) <- paste0("habib_tsne", seq(ncol(habib_tsne)))
 df_allgenes <- data.frame(
   colData(sce)[ , c(
-    "sample", "cell_id_stem", "log10_total_features_by_counts",
-    "habib_cluster", "habib_cluster_name")],
-  habib_tsne,
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2),
+    "log10_total_features_by_counts", "habib_cluster", "habib_cluster_name")],
   tmp_df[1:2])
 rownames(df_allgenes) <- NULL
 df_allgenes$habib_cluster_name <- factor(df_allgenes$habib_cluster_name)
@@ -815,9 +805,8 @@ tmp_df <- data.frame(reducedDim(sce_hvg, "PCA"))
 names(tmp_df) <- paste0("hvg_pc", seq(ncol(tmp_df)))
 df_hvg <- data.frame(
   colData(sce_hvg)[ , c(
-    "sample", "cell_id_stem", "log10_total_features_by_counts",
-    "habib_cluster", "habib_cluster_name")],
-  habib_tsne,
+    "sample", "cell_id_stem", paste0("habib_tsne", 1:2),
+    "log10_total_features_by_counts", "habib_cluster", "habib_cluster_name")],
   tmp_df[1:2])
 rownames(df_hvg) <- NULL
 df_hvg$habib_cluster_name <- factor(df_hvg$habib_cluster_name)
@@ -846,7 +835,7 @@ reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne$Y)
 tmp_df <- data.frame(reducedDim(sce_hvg, "TSNE"))
 names(tmp_df) <- paste0("hvg_tsne", seq(ncol(tmp_df)))
 df_hvg <- data.frame(df_hvg, tmp_df)
-rm(Rtsne, pca, tmp_df, habib_tsne)
+rm(Rtsne, pca, tmp_df)
 
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
