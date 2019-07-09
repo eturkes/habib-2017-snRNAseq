@@ -128,13 +128,9 @@ Overall, it can be seen that our reproduction and replication of the results in 
 
 ```{r, include = FALSE}
 # Set up data frame for ggplot2.
-add_df <- data.frame(reducedDim(sce_hvg, "TSNE"))
-names(add_df) <- paste0("hvg_tsne", seq(ncol(add_df)))
 gg_df <- data.frame(
-  colData(sce_hvg)[ , c(
-    "sample", "cell_id_stem", paste0("habib_tsne", 1:2), "log10_total_features_by_counts",
-    "habib_cluster", "habib_cluster_name", "km_17_clusters_name")],
-  add_df)
+  colData(sce)[ , c(
+    paste0("habib_tsne", 1:2), paste0("hvg_tsne", 1:2), "habib_cluster_name", "km_17_clusters_name")])
 rownames(gg_df) <- NULL
 gg_df$habib_cluster_name <- factor(gg_df$habib_cluster_name)
 gg_df$km_17_clusters_name <- factor(gg_df$km_17_clusters_name)
@@ -609,10 +605,13 @@ if (file.exists(rds)) {
 ```
 
 ```{r}
-# Set up data frame for ggplot2.
 sce <- pca
 add_df <- data.frame(reducedDim(sce, "PCA"))
 names(add_df) <- paste0("allgenes_pc", seq(ncol(add_df)))
+colData(sce) <- cbind(
+  colData(sce), allgenes_pc1 = add_df$allgenes_pc1, allgenes_pc2 = add_df$allgenes_pc2)
+
+# Set up data frame for ggplot2.
 gg_df <- data.frame(
   colData(sce)[ , c(
     "sample", "cell_id_stem", paste0("habib_tsne", 1:2),
@@ -689,6 +688,8 @@ if (file.exists(rds)) {
 sce <- runTSNE
 add_df <- data.frame(reducedDim(sce, "TSNE"))
 names(add_df) <- paste0("allgenes_tsne", seq(ncol(add_df)))
+colData(sce) <- cbind(
+  colData(sce), allgenes_tsne1 = add_df$allgenes_tsne1, allgenes_tsne2 = add_df$allgenes_tsne2)
 gg_df <- data.frame(gg_df, add_df)
 rm(runTSNE)
 
@@ -797,18 +798,15 @@ if (file.exists(rds)) {
 ```
 
 ```{r}
-# Set up data frame for ggplot2.
 pca <- t(ppk$d*t(ppk$u))
 reducedDims(sce_hvg) <- SimpleList(PCA = pca)
 add_df <- data.frame(reducedDim(sce_hvg, "PCA"))
 names(add_df) <- paste0("hvg_pc", seq(ncol(add_df)))
-gg_df <- data.frame(
-  colData(sce_hvg)[ , c(
-    "sample", "cell_id_stem", paste0("habib_tsne", 1:2),
-    "log10_total_features_by_counts", "habib_cluster", "habib_cluster_name")],
-  add_df[1:2])
-rownames(gg_df) <- NULL
-gg_df$habib_cluster_name <- factor(gg_df$habib_cluster_name)
+colData(sce_hvg) <- cbind(
+  colData(sce_hvg), hvg_pc1 = add_df$hvg_pc1, hvg_pc2 = add_df$hvg_pc2)
+colData(sce) <- cbind(
+  colData(sce), hvg_pc1 = add_df$hvg_pc1, hvg_pc2 = add_df$hvg_pc2)
+gg_df <- data.frame(gg_df, add_df[1:2])
 rm(edat)
 
 plotPCA(sce_hvg, ncomponents = 4, colour_by = "habib_cluster_name")  +
@@ -833,6 +831,10 @@ if (file.exists(rds)) {
 reducedDims(sce_hvg) <- SimpleList(PCA = pca, TSNE = Rtsne$Y)
 add_df <- data.frame(reducedDim(sce_hvg, "TSNE"))
 names(add_df) <- paste0("hvg_tsne", seq(ncol(add_df)))
+colData(sce_hvg) <- cbind(
+  colData(sce_hvg), hvg_tsne1 = add_df$hvg_tsne1, hvg_tsne2 = add_df$hvg_tsne2)
+colData(sce) <- cbind(
+  colData(sce), hvg_tsne1 = add_df$hvg_tsne1, hvg_tsne2 = add_df$hvg_tsne2)
 gg_df <- data.frame(gg_df, add_df)
 rm(Rtsne, pca, add_df)
 
@@ -965,8 +967,11 @@ for (i in 1:length(km_17_clusters)) {
 colData(sce_hvg) <- cbind(
   colData(sce_hvg), km_17_clusters = gg_df$km_17_clusters,
   km_17_clusters_name = gg_df$km_17_clusters_name)
+colData(sce) <- cbind(
+  colData(sce), km_17_clusters = gg_df$km_17_clusters,
+  km_17_clusters_name = gg_df$km_17_clusters_name)
 gg_df$km_17_clusters_name <- factor(gg_df$km_17_clusters_name)
-sce_hvg
+sce
 ```
 
 ## Visualization {.tabset}
