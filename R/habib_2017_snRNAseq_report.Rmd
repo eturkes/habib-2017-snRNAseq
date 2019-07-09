@@ -91,8 +91,8 @@ dim_red_plot <- function(data, x, y, col, type) {
     ggplot2::guides(color = ggplot2::guide_legend(override.aes = list(alpha = 1)))
     if (type == "cat") {
       gg <- gg + ggrepel::geom_label_repel(
-        data = label_df2, ggplot2::aes(label = label), show.legend = FALSE)}
-    else if (type == "cont") {
+        data = label_df2, ggplot2::aes(label = label), show.legend = FALSE)
+    } else if (type == "cont") {
       gg <- ggplot2::ggplot(data, ggplot2::aes_string(x = x, y = y)) +
         ggplot2::geom_point(alpha = 0.35, stroke = 0.05, ggplot2::aes_string(color = col)) +
         ggplot2::theme_classic() +
