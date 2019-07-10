@@ -24,6 +24,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         zlib1g-dev \
         libxml2-dev \
+        libpng-dev \
     && Rscript -e "install.packages('conflicted')" \
         -e "install.packages('rmarkdown')" \
         -e "install.packages('rprojroot')" \
@@ -36,6 +37,7 @@ RUN apt-get update \
         -e "install.packages('Rtsne')" \
         -e "install.packages('knitr')" \
         -e "install.packages('kableExtra')" \
+        -e "install.packages('Seurat')" \
         -e "install.packages('BiocManager')" \
         -e "BiocManager::install('BiocFileCache')" \
         -e "BiocManager::install('SingleCellExperiment')" \
