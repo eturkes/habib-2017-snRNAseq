@@ -75,31 +75,36 @@ The source code and instructions for rerunning the analysis can be found at [git
 **Read just the following sub-sections (1.1-1.2) for the final results of the analysis and a brief summary of the methods.**
 
 ```{r, include = FALSE}
-library("magrittr")
+packages <- c(
+  "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment", "biomaRt", "S4Vectors",
+  "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "ggrepel", "BiocSingular",
+  "ggplot2", "svd", "Rtsne", "knitr", "kableExtra")
+invisible(suppressPackageStartupMessages(lapply(packages, library, character.only = TRUE)))
+
+options(stringsAsFactors = FALSE)
 
 results_dir <- file.path(getwd(), "..", "results")
 
 # ggplot2 function providing custom aesthetics and automatic placement of categorical labels.
 # For continuous data, a colorbar is implemented.
 dim_red_plot <- function(data, x, y, col, type) {
-  gg <- ggplot2::ggplot(data, ggplot2::aes_string(x = x, y = y, color = col)) +
-    ggplot2::geom_point(alpha = 0.35, stroke = 0.05, shape = 21, ggplot2::aes_string(fill = col)) +
-    ggplot2::theme_classic() +
-    ggplot2::theme(
-      legend.position = "right", plot.title = ggplot2::element_text(hjust = 0.5),
-      legend.title = ggplot2::element_blank()) +
-    ggplot2::guides(color = ggplot2::guide_legend(override.aes = list(alpha = 1)))
+  gg <- ggplot(data, aes_string(x = x, y = y, color = col)) +
+    geom_point(alpha = 0.35, stroke = 0.05, shape = 21, aes_string(fill = col)) +
+    theme_classic() +
+    theme(
+      legend.position = "right", plot.title = element_text(hjust = 0.5),
+      legend.title = element_blank()) +
+    guides(color = guide_legend(override.aes = list(alpha = 1)))
     if (type == "cat") {
-      gg <- gg + ggrepel::geom_label_repel(
-        data = label_df2, ggplot2::aes(label = label), show.legend = FALSE)
+      gg <- gg + geom_label_repel(data = label_df2, aes(label = label), show.legend = FALSE)
     } else if (type == "cont") {
-      gg <- ggplot2::ggplot(data, ggplot2::aes_string(x = x, y = y)) +
-        ggplot2::geom_point(alpha = 0.35, stroke = 0.05, ggplot2::aes_string(color = col)) +
-        ggplot2::theme_classic() +
-        ggplot2::theme(
-          legend.position = "right", plot.title = ggplot2::element_text(hjust = 0.5),
-          legend.title = ggplot2::element_blank()) +
-        ggplot2::scale_colour_gradient(low = "blue", high = "red")}
+      gg <- ggplot(data, aes_string(x = x, y = y)) +
+        geom_point(alpha = 0.35, stroke = 0.05, aes_string(color = col)) +
+        theme_classic() +
+        theme(
+          legend.position = "right", plot.title = element_text(hjust = 0.5),
+          legend.title = element_blank()) +
+        scale_colour_gradient(low = "blue", high = "red")}
   gg}
 
 sce <- readRDS(file.path(results_dir, "data", "sce.rds"))
@@ -145,13 +150,13 @@ The original clusters and tSNE coordinates.
 label_df <- data.frame(
   habib_cluster_name = levels(gg_df$habib_cluster_name), label = levels(gg_df$habib_cluster_name))
 label_df2 <- gg_df %>%
-  dplyr::group_by(habib_cluster_name) %>%
-  dplyr::summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
-  dplyr::left_join(label_df)
+  group_by(habib_cluster_name) %>%
+  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
+  left_join(label_df)
 
 dim_red_plot(
   data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat") +
-  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("Habib Clusters Habib tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
 ```
 
 ### New Clusters Habib tSNE
@@ -164,13 +169,13 @@ label_df <- data.frame(
   km_17_clusters_name = levels(gg_df$km_17_clusters_name),
   label = levels(gg_df$km_17_clusters_name))
 label_df2 <- gg_df %>%
-  dplyr::group_by(km_17_clusters_name) %>%
-  dplyr::summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
-  dplyr::left_join(label_df)
+  group_by(km_17_clusters_name) %>%
+  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
+  left_join(label_df)
 
 dim_red_plot(
   data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "km_17_clusters_name", type = "cat") +
-  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("New Clusters Habib tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("New Clusters Habib tSNE")
 ```
 
 ### Habib Clusters New tSNE
@@ -182,13 +187,13 @@ The original clusters with new tSNE coordinates based on HVGs (highly variable g
 label_df <- data.frame(
   habib_cluster_name = levels(gg_df$habib_cluster_name), label = levels(gg_df$habib_cluster_name))
 label_df2 <- gg_df %>%
-  dplyr::group_by(habib_cluster_name) %>%
-  dplyr::summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
-  dplyr::left_join(label_df)
+  group_by(habib_cluster_name) %>%
+  summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
+  left_join(label_df)
 
 dim_red_plot(
   data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "habib_cluster_name", type = "cat") +
-  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("Habib Clusters New tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters New tSNE")
 ```
 
 ### New Clusters New tSNE
@@ -201,13 +206,13 @@ label_df <- data.frame(
   km_17_clusters_name = levels(gg_df$km_17_clusters_name),
   label = levels(gg_df$km_17_clusters_name))
 label_df2 <- gg_df %>%
-  dplyr::group_by(km_17_clusters_name) %>%
-  dplyr::summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
-  dplyr::left_join(label_df)
+  group_by(km_17_clusters_name) %>%
+  summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
+  left_join(label_df)
 
 dim_red_plot(
   data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "km_17_clusters_name", type = "cat") +
-  ggplot2::xlab("tSNE 1") + ggplot2::ylab("tSNE 2") + ggplot2::ggtitle("New Clusters New tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("New Clusters New tSNE")
 ```
 
 # ~~~ Breakdown of Methods ~~~ {-}
