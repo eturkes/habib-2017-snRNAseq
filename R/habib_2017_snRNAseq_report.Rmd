@@ -148,7 +148,7 @@ gg_df$seurat_clusters_name <- factor(gg_df$seurat_clusters_name)
 
 ### Habib Clusters Habib tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   habib_cluster_name = levels(gg_df$habib_cluster_name), label = levels(gg_df$habib_cluster_name))
@@ -164,7 +164,7 @@ dim_red_plot(
 
 ### KM 17 Clusters Habib tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   km_17_clusters_name = levels(gg_df$km_17_clusters_name),
@@ -181,7 +181,7 @@ dim_red_plot(
 
 ### KM 22 Clusters Habib tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   km_22_clusters_name = levels(gg_df$km_22_clusters_name),
@@ -198,7 +198,7 @@ dim_red_plot(
 
 ### Seurat Clusters Habib tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   seurat_clusters_name = levels(gg_df$seurat_clusters_name),
@@ -215,13 +215,13 @@ dim_red_plot(
 
 ### Seurat Clusters Seurat tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 DimPlot(object = seurat, reduction = "tsne", label = TRUE)
 ```
 
 ### KM 22 Clusters HVG SVD PCA tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   km_22_clusters_name = levels(gg_df$km_22_clusters_name),
@@ -238,7 +238,7 @@ dim_red_plot(
 
 ### KM 17 Clusters HVG SVD PCA tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   km_17_clusters_name = levels(gg_df$km_17_clusters_name),
@@ -255,7 +255,7 @@ dim_red_plot(
 
 ### Habib Clusters HVG SVD PCA tSNE
 
-```{r}
+```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   habib_cluster_name = levels(gg_df$habib_cluster_name), label = levels(gg_df$habib_cluster_name))
@@ -885,13 +885,11 @@ colData(sce) <- cbind(
 gg_df <- data.frame(gg_df, add_df)
 
 # Setup for automatic placement of cluster labels.
-label_df <- data.frame(
-  habib_cluster_name = levels(gg_df$habib_cluster_name),
-  label = levels(gg_df$habib_cluster_name))
 label_df2 <- gg_df %>%
   group_by(habib_cluster_name) %>%
   summarize(svd_tsne1 = median(svd_tsne1), svd_tsne2 = median(svd_tsne2)) %>%
   left_join(label_df)
+
 dim_red_plot(
   data = gg_df, x = "svd_tsne1", y = "svd_tsne2", col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters SVD tSNE")
@@ -950,7 +948,7 @@ Finally, we select the top roughly 1,000 HVGs using their FDR and biological res
 
 ```{r}
 dec1 <- dec
-dec1$bio[which(dec$bio < 1e-72)] <- 1.5e-73
+dec1$bio[which(dec$bio < 1e-72)] <- 1.5e-72
 dec1$FDR[which(dec$FDR < 1e-5)] <- 1e-5
 
 kable(table(dec$FDR < 1e-72, dec$bio > 1e-5), row.names = TRUE, padding = 0) %>%
