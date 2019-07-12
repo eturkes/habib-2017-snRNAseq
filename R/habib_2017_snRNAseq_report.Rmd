@@ -42,7 +42,7 @@ knit:
 #
 #    Emir Turkes can be contacted at emir.turkes@eturkes.com
 
-knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7, error = TRUE)
+knitr::opts_chunk$set(fig.width = 8.5, fig.height = 7)
 ```
 
 <style type="text/css">
@@ -355,7 +355,7 @@ The data is now sufficiently prepared to form a SingleCellExperiment (SCE) objec
 ```{r}
 col_dat <- cbind(col_dat, clust[ , names(clust) != "sample"], tsne[ , names(tsne) != "sample"])
 sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
-rm(clust, tsne, col_dat)
+rm(clust, tsne)
 sce
 ```
 
@@ -363,17 +363,16 @@ sce
 
 Analysis with Seurat requires use of a Seurat class object.
 As a typical Seurat analysis uses its own QC steps, we diverge the two objects here.
-We also use minimal metadata, as that will be mainly manipulated with the SCE object.
 
 ```{r}
-seurat <- CreateSeuratObject(counts = counts)
-rm(counts)
+seurat <- CreateSeuratObject(counts = counts, meta.data = col_dat)
+rm(counts, col_dat)
 seurat
 ```
 
 ## Gene Annotations
 
-We add annotations based on the hg19 reference gnome, the same used in @habib_massively_2017, to the SCE object.
+We add annotations based on the hg19 reference gnome, the same used in @habib_massively_2017.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "gene_anno.rds")
@@ -390,7 +389,7 @@ if (file.exists(rds)) {
   saveRDS(gene_anno, rds)}
 ```
 
-Before merging it into the SCE object, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
+Before merging them into the SCE and Seurat objects, the annotation must be cleaned by removing genes not in the RNAseq dataset, irrelevant annotations, duplicate genes, and genes that are not annotated.
 
 ```{r}
 # Remove genes not in the RNAseq dataset.
@@ -413,8 +412,10 @@ gene_anno <- rbind(gene_anno[-dup, ], gene_anno2)
 # Remove missing.
 keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
 sce <- sce[keep_genes, ]
+seurat <- seurat[keep_genes, ]
 
 rowData(sce) <- gene_anno
+seurat <- AddMetaData(seurat, metadata = gene_anno)
 rm(gene_anno, gene_anno2)
 names(rowData(sce))
 ```
@@ -897,7 +898,6 @@ Finally, we select the top roughly 1,000 HVGs using their FDR and biological res
 dec1 <- dec
 dec1$bio[which(dec$bio < 1e-72)] <- 1.5e-73
 dec1$FDR[which(dec$FDR < 1e-5)] <- 1e-5
-rm(top_dec)
 
 kable(table(dec$FDR < 1e-72, dec$bio > 1e-5), row.names = TRUE, padding = 0) %>%
   kable_styling(bootstrap_options = "striped", font_size = 13, full_width = FALSE, position = "left")
@@ -1046,7 +1046,7 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) HVG denoisePCA tSNE")
 ```
 
-### SVD PCA tSNE
+#### SVD PCA tSNE
 
 Next using the SVD PCs.
 
@@ -1087,4 +1087,47 @@ dim_red_plot(
   data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2",
   col = "log10_total_features_by_counts", type = "cont") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) HVG SVD tSNE")
+```
+
+### Seurat
+
+We start by using Seurat's built-in functions to select the top 1,000 HVGs.
+
+```{r}
+# There were issues adding metadata to the Seurat object at the Preliminary Cleaning stage.
+# Therefore, for now we opt to convert the SCE object thus far directly to a Seurat one.
+seurat <- as.Seurat(sce, counts = "counts", data = NULL)
+
+seurat <- FindVariableFeatures(seurat, selection.method = "vst", nfeatures = 1000)
+top_dec <- head(VariableFeatures(seurat), 10)
+
+LabelPoints(plot = VariableFeaturePlot(seurat), points = top_dec, repel = TRUE)
+```
+
+#### PCA
+
+```{r}
+seurat <- ScaleData(seurat, rownames(seurat))
+seurat <- RunPCA(seurat, features = VariableFeatures(object = seurat))
+rm(top_dec)
+
+VizDimLoadings(seurat, dims = 1:2, reduction = "pca")
+DimPlot(seurat, reduction = "pca", group.by = "habib_cluster_name")
+DimHeatmap(seurat, dims = 1:6, cells = 500, balanced = TRUE)
+```
+
+As done earlier, we choose the number of PCs for downstream analysis by visually identifying a dropoff in explained variance.
+In this case, the value chosen is 16.
+
+```{r}
+ElbowPlot(seurat)
+```
+
+#### tSNE
+
+```{r}
+seurat <- RunTSNE(object = seurat, dims = 1:16, check_duplicates = FALSE)
+
+DimPlot(object = seurat, reduction = "tsne", group.by = "habib_cluster_name", label = TRUE)
+DimPlot(object = seurat, reduction = "tsne", group.by = "cell_id_stem")
 ```
