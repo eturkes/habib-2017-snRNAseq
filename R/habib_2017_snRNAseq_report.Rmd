@@ -203,7 +203,7 @@ dim_red_plot(
 DimPlot(object = seurat, reduction = "tsne", label = TRUE)
 ```
 
-### KM 18 Clusters HVG SVD PCA tSNE
+### KM 18 Clusters HVG SVD tSNE
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
@@ -217,10 +217,10 @@ label_df2 <- gg_df %>%
 
 dim_red_plot(
   data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2", col = "km_18_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters HVG SVD PCA tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters HVG SVD tSNE")
 ```
 
-### Habib Clusters HVG SVD PCA tSNE
+### Habib Clusters HVG SVD tSNE
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
@@ -233,7 +233,7 @@ label_df2 <- gg_df %>%
 
 dim_red_plot(
   data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2", col = "habib_cluster_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG SVD PCA tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG SVD tSNE")
 ```
 
 # ~~~ Breakdown of Methods ~~~ {-}
@@ -1251,7 +1251,7 @@ dim_red_plot(
 DimPlot(object = seurat, reduction = "tsne", label = TRUE)
 ```
 
-### KM 18 Clusters HVG SVD PCA tSNE
+### KM 18 Clusters HVG SVD tSNE
 
 ```{r}
 # Setup for automatic placement of cluster labels.
@@ -1265,10 +1265,10 @@ label_df2 <- gg_df %>%
 
 dim_red_plot(
   data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2", col = "km_18_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters HVG SVD PCA tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters HVG SVD tSNE")
 ```
 
-### Habib Clusters HVG SVD PCA tSNE
+### Habib Clusters HVG SVD tSNE
 
 ```{r}
 # Setup for automatic placement of cluster labels.
@@ -1281,7 +1281,7 @@ label_df2 <- gg_df %>%
 
 dim_red_plot(
   data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2", col = "habib_cluster_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG SVD PCA tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG SVD tSNE")
 ```
 
 # References
