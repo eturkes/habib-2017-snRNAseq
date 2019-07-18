@@ -1086,7 +1086,7 @@ label_df2 <- gg_df %>%
 
 dim_red_plot(
   data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "km_18_clusters", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 17 Clusters Habib tSNE")
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters Habib tSNE")
 ```
 
 Interestingly, it appears that our k-means clusters have far more overlap with the tSNE from @habib_massively_2017, though this is not true for all clusters, such the exCA ones.
