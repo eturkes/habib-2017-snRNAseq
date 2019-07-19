@@ -63,9 +63,9 @@ The background for this data is as follows:
 
 - dbGaP Accession: [phs000424](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v7.p2).
 - Part of [GTEx](https://gtexportal.org/home/) and originally published in @habib_massively_2017.
-- Archived frozen adult human post-mortem tissue.
-- 19,550 nuclei, 1,683 genes, 2,187 transcripts.
-- 3 PFC samples, 4 hippocampus samples from 5 donors.
+- Archived frozen adult human post-mortem tissue from 5 donors.
+- 3 prefrontal cortex samples, 4 hippocampal samples.
+- 14,963 nuclei, 31,930 genes.
 
 This analysis was performed in R except where noted.
 The source code and instructions for rerunning the analysis can be found at [github.com/eturkes/habib-2017-snRNAseq](https://github.com/eturkes/habib-2017-snRNAseq).
@@ -428,7 +428,7 @@ sce <- sce[keep_genes, ]
 
 rowData(sce) <- gene_anno
 names(rowData(sce))[names(rowData(sce)) == "strand"] <- "strand_n" # Conflicts with other packages.
-rm(gene_anno, gene_anno2, mart)
+rm(gene_anno, gene_anno2)
 names(rowData(sce))
 ```
 
@@ -1016,7 +1016,7 @@ We opt to use HVGs for both cluster input and the tSNE coordinates as they appea
 
 ## Seurat
 
-We start our clustering approach with Seurat as it is a graph-based like the approach used in @habib_massively_2017.
+We start our clustering approach with Seurat as it is graph-based like the approach used in @habib_massively_2017.
 Seurat also heuristically selects the number of clusters as opposed to the user providing it a-priori, though this can be largely influenced by the `resolution` parameter in `FindClusters`.
 Although we know the number of clusters we intend to replicate, due to differences in algorithmic implementations, greater accuracy may be achieved with slightly more or less clusters.
 
@@ -1042,7 +1042,7 @@ seurat <- RunTSNE(object = seurat, dims = 1:31, check_duplicates = FALSE)
 seurat <- FindNeighbors(seurat, dims = 1:31)
 seurat <- FindClusters(seurat, resolution = 0.6)
 gg_df$seurat_clusters <- seurat$seurat_clusters
-head(Idents(seurat), 5)
+head(Idents(seurat), 4)
 
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
@@ -1089,7 +1089,7 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters Habib tSNE")
 ```
 
-Interestingly, it appears that our k-means clusters have far more overlap with the tSNE from @habib_massively_2017, though this is not true for all clusters, such the exCA ones.
+Interestingly, it appears that our k-means clusters have greater overlap with the tSNE from @habib_massively_2017, though this is not true for all clusters, such the exCA ones.
 
 ## Labeling {.tabset}
 
@@ -1136,9 +1136,8 @@ for (i in 1:length(seurat_clusters)) {
   } else if (seurat_clusters[i] == 18) {
     gg_df[i, ncol(gg_df)] <- "Unlabeled2"}}
 seurat_clusters_id <- c(
-  "exPFC1", "exDG", "ODC1", "GABA1", "ASC1", "ODC2",
-  "exPFC2.1", "exCA1", "OPC", "MG", "ASC2", "END",
-  "GABA2.2", "exCA1", "Unlabeled1", "NSC", "exPFC2.2", "Unlabeled2")
+  "exPFC1", "exDG", "ODC1", "GABA1", "ASC1", "ODC2", "exPFC2.1", "exCA1", "OPC",
+  "MG", "ASC2", "END", "GABA2.2", "exCA1", "Unlabeled1", "NSC", "exPFC2.2", "Unlabeled2")
 names(seurat_clusters_id) <- levels(seurat)
 seurat <- RenameIdents(seurat, seurat_clusters_id)
 
