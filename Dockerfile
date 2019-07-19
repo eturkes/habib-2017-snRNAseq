@@ -35,8 +35,6 @@ RUN apt-get update \
         -e "install.packages('ggplot2')" \
         -e "install.packages('svd')" \
         -e "install.packages('Rtsne')" \
-        -e "install.packages('knitr')" \
-        -e "install.packages('kableExtra')" \
         -e "install.packages('Seurat')" \
         -e "install.packages('BiocManager')" \
         -e "BiocManager::install('BiocFileCache')" \
