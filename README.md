@@ -29,8 +29,8 @@ After downloading, it should be opened in a web browser.
 In order to reproduce the report, prerequisite data must be downloaded from my [Google Drive](https://drive.google.com/drive/folders/1nbA_D2RlJqW7g4_0Grl6yVVJkWb5WEw4?usp=sharing).
 After downloading and unzipping, move the directory to the project root and rename it as `gdrive`. 
 
-A Docker image for this project is available from [DockerHub](https://cloud.docker.com/repository/docker/eturkes/habib-2017-snrnaseq/general). 
-This is the recommended way to reproduce and explore the project. 
+A Docker image for this project is available from [DockerHub](https://cloud.docker.com/repository/docker/eturkes/habib-2017-snrnaseq/general).
+This is the recommended way to reproduce and explore the project.
 
 To run all scripts and generate an HTML report in the `results` directory, just run:
 ```
