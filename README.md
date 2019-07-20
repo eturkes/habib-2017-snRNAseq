@@ -21,14 +21,21 @@
 # Habib 2017 snRNAseq Analysis
 #### *This analysis is considered complete and should not see major updates*
 
-Analysis of Habib 2017 snRNAseq data  
+Analysis of Habib 2017 snRNAseq data
 
-In order to run and view the results of this analysis, the prerequisite data is required.
-Please contact me at emir.turkes@eturkes.com if you are interested.
-Otherwise, feel free to reuse this codebase in accordance with the license.
+The up-to-date R Markdown HTML report can be found [here](https://drive.google.com/file/d/1pApDFB0KPQeQtdhrEoat58fj1rR_ukbK/view?usp=sharing). 
+After downloading, it should be opened in a web browser.
 
-A Docker image for this project is available from [DockerHub](https://cloud.docker.com/repository/docker/eturkes/habib-2017-snrnaseq/general).  
-This is the recommended way to reproduce and explore the project.  
+In order to reproduce the report, prerequisite data must be downloaded from my [Google Drive](https://drive.google.com/drive/folders/1nbA_D2RlJqW7g4_0Grl6yVVJkWb5WEw4?usp=sharing).
+After downloading and unzipping, move the directory to the project root and rename it as `gdrive`. 
+
+A Docker image for this project is available from [DockerHub](https://cloud.docker.com/repository/docker/eturkes/habib-2017-snrnaseq/general). 
+This is the recommended way to reproduce and explore the project. 
+
+To run all scripts and generate an HTML report in the `results` directory, just run:
+```
+docker-compose run all
+```
 
 To open RStudio, run:
 ```
