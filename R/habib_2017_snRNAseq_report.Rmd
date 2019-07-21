@@ -78,7 +78,7 @@ The source code and instructions for rerunning the analysis can be found at [git
 packages <- c(
   "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment", "biomaRt", "S4Vectors",
   "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "ggrepel", "BiocSingular",
-  "ggplot2", "svd", "Rtsne", "knitr", "kableExtra", "Seurat")
+  "ggplot2", "rsvd", "Rtsne", "Seurat", "viridis")
 invisible(suppressPackageStartupMessages(lapply(packages, library, character.only = TRUE)))
 
 options(stringsAsFactors = FALSE)
@@ -104,28 +104,24 @@ dim_red_plot <- function(data, x, y, col, type) {
         theme(
           legend.position = "right", plot.title = element_text(hjust = 0.5),
           legend.title = element_blank()) +
-        scale_colour_gradient(low = "blue", high = "red")}
+        scale_colour_viridis()}
   gg}
 
 sce_orig <- readRDS(file.path(results_dir, "data", "sce_orig.rds"))
 sce <- readRDS(file.path(results_dir, "data", "sce.rds"))
 sce_hvg <- readRDS(file.path(results_dir, "data", "sce_hvg.rds"))
-seurat <- readRDS(file.path(results_dir, "data", "seurat.rds"))
 ```
 
 ## SCE Object of Original Data
 
-The dataset in @habib_massively_2017 includes transcript counts, cluster labels, and tSNE coordinates.
-However, in order to transform the data to the main figures seen in the paper, some additional QC was required.
-The protocol described in @habib_massively_2017 was followed where possible and included the addition of gene annotations, the removal of low-quality nuclei, the removal of lowly-expressed genes, and normalization.
-The data was also transformed into an SCE (SingleCellExperiment) object as well as a Seurat object, both of which facilitate easy interface with popular software packages.
-These objects, along with an SCE object subsetted to the top HVGs (highly variable genes, about 6,000), and an object without QC, are included in the `results/data/` directory of this project.
+The dataset in @habib_massively_2017 includes transcript counts, cluster labels, and tSNE coordinates, which were used to recreate Figure 2a of the paper following protocols described in the methods section where possible.
+The processed data is included in this analysis as an SCE (SingleCellExperiment) object alongside an SCE subsetted to the top HVGs (highly variable genes, about 2,000) and an SCE without additional QC.
+They can be found in the `results/data/` directory.
 
 ```{r, message = FALSE}
 sce_orig
 sce
 sce_hvg
-seurat
 ```
 
 ## Reproduction and Replication {.tabset}
@@ -138,13 +134,11 @@ Overall, it can be seen that our reproduction and replication of the results in 
 # Set up data frame for ggplot2.
 gg_df <- data.frame(
   colData(sce)[ , c(
-    paste0("habib_tsne", 1:2), paste0("hvg_svd_tsne", 1:2), "habib_cluster_name",
-    "km_18_clusters_name", "seurat_clusters_name")])
+    paste0("habib_tsne", 1:2), paste0("hvg_svd_tsne", 1:2),
+    "habib_cluster_name", "seurat_clusters_name")])
 rownames(gg_df) <- NULL
 gg_df$habib_cluster_name <- factor(gg_df$habib_cluster_name)
-gg_df$km_18_clusters_name <- factor(gg_df$km_18_clusters_name)
 gg_df$seurat_clusters_name <- factor(gg_df$seurat_clusters_name)
-rm(sce_org)
 ```
 
 ### Habib Clusters Habib tSNE
@@ -161,23 +155,6 @@ label_df2 <- gg_df %>%
 dim_red_plot(
   data = gg_df, x = "habib_tsne1", y = "habib_tsne2",col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
-```
-
-### KM 18 Clusters Habib tSNE
-
-```{r, echo = FALSE, message = FALSE}
-# Setup for automatic placement of cluster labels.
-label_df <- data.frame(
-  km_18_clusters_name = levels(gg_df$km_18_clusters_name),
-  label = levels(gg_df$km_18_clusters_name))
-label_df2 <- gg_df %>%
-  group_by(km_18_clusters_name) %>%
-  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
-  left_join(label_df)
-
-dim_red_plot(
-  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "km_18_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters Habib tSNE")
 ```
 
 ### Seurat Clusters Habib tSNE
@@ -197,27 +174,22 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters Habib tSNE")
 ```
 
-### Seurat Clusters Seurat tSNE
-
-```{r, echo = FALSE, message = FALSE}
-DimPlot(object = seurat, reduction = "tsne", label = TRUE)
-```
-
-### KM 18 Clusters HVG SVD tSNE
+### Seurat Clusters HVG SVD tSNE
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  km_18_clusters_name = levels(gg_df$km_18_clusters_name),
-  label = levels(gg_df$km_18_clusters_name))
+  seurat_clusters_name = levels(gg_df$seurat_clusters_name),
+  label = levels(gg_df$seurat_clusters_name))
 label_df2 <- gg_df %>%
-  group_by(km_18_clusters_name) %>%
+  group_by(seurat_clusters_name) %>%
   summarize(hvg_svd_tsne1 = median(hvg_svd_tsne1), hvg_svd_tsne2 = median(hvg_svd_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2", col = "km_18_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters HVG SVD tSNE")
+  data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2",
+  col = "seurat_clusters_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG SVD tSNE")
 ```
 
 ### Habib Clusters HVG SVD tSNE
@@ -236,6 +208,10 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG SVD tSNE")
 ```
 
+```{r, include = FALSE}
+rm(gg_df, label_df, label_df2, sce, sce_hvg, sce_orig, seurat)
+```
+
 # ~~~ Breakdown of Methods ~~~ {-}
 
 **Sections from here to the end break down the methods used and are optional to read.**
@@ -246,7 +222,7 @@ We start by loading in any required packages and setting some global variables.
 packages <- c(
   "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment", "biomaRt", "S4Vectors",
   "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "ggrepel", "BiocSingular",
-  "ggplot2", "svd", "Rtsne", "knitr", "kableExtra", "Seurat")
+  "ggplot2", "rsvd", "Rtsne", "Seurat", "viridis")
 invisible(suppressPackageStartupMessages(lapply(packages, library, character.only = TRUE)))
 
 options(stringsAsFactors = FALSE)
@@ -279,7 +255,7 @@ dim_red_plot <- function(data, x, y, col, type) {
         theme(
           legend.position = "right", plot.title = element_text(hjust = 0.5),
           legend.title = element_blank()) +
-        scale_colour_gradient(low = "blue", high = "red")}
+        scale_colour_viridis()}
   gg}
 ```
 
@@ -356,7 +332,7 @@ for (i in seq_len(nrow(clust))) {
 
 clust <- clust[ , -c(2:3)]
 names(clust) <- c("sample", "habib_cluster", "habib_cluster_name")
-clust$habib_cluster <- as.factor(clust$habib_cluster)
+clust$habib_cluster <- factor(clust$habib_cluster)
 clust <- clust[match(col_dat$sample, clust$sample), ]
 rownames(clust) <- NULL
 datatable(clust[1:5, ])
@@ -371,7 +347,7 @@ datatable(tsne[1:5, ])
 
 ## SingleCellExperiment
 
-The data is now sufficiently prepared to form a SingleCellExperiment (SCE) object.
+The data is now sufficiently prepared to form an SCE object.
 
 ```{r}
 col_dat <- cbind(col_dat, clust[ , names(clust) != "sample"], tsne[ , names(tsne) != "sample"])
@@ -434,19 +410,18 @@ names(rowData(sce))
 
 # QC
 
-These sections assess and correct issues and irregularities in the dataset.
-A number of standard QC steps that would normally be performed here were already carried out in @habib_massively_2017.
-These steps are indicated and we simply double-check that they were performed on the dataset and carry them out if not.
+A number of QC steps that would normally be performed here were already carried out in @habib_massively_2017.
+In those cases we double-check that they were done carry them out if not.
+We opt not to perform additional QC beyond that described in the paper.
 
 ## Empty Droplets
 
 Empty droplets are typically identified as those that have no gene counts or only a small number of them (typically less than 100 to 200, resulting from the capture of ambient RNA).
-@habib_massively_2017 describes this as having been done through the following:
+@habib_massively_2017 describes this filtering as having taken place by the following:
 
 > Nuclei with less than 200 detected genes and less than 10,000 usable reads were filtered out.
 
-Furthermore, the paper states that 19,550 nuclei were extracted, but a subset of 14,963 of them were used for analysis.
-This subset is identical to the nuclei counts in the imported dataset.
+Furthermore, the paper states that 19,550 nuclei were extracted, but a subset of 14,963 of them were used for analysis, which is identical to the nuclei counts in the imported dataset.
 
 ```{r}
 dim(sce)
@@ -464,8 +439,7 @@ plot(
   ylab = "Total Gene Count", cex = 0.5, cex.lab = 1.2)
 ```
 
-We see from the lower limit of the plot that there is indeed a cutoff at 200 genes.
-In a situation where this cutoff was not applied, we might apply it using the `emptyDrops` function from `scater`, which should provide a more robust approximation of empty droplets.
+We see from the lower limit of the plot that there is was indeed a cutoff applied at 200 genes.
 
 ## Low Quality Nuclei
 
@@ -527,21 +501,20 @@ We assume that filtering from library and feature size had already taken place, 
 
 ## Lowly Expressed Genes
 
-Removal of lowly expressed genes has significant effects on downstream analysis, particularly for differential expression, as shown in @soneson_bias_2018.
-The methods section of @habib_massively_2017 suggests that this had already been done:
+The methods section of @habib_massively_2017 suggests that filtering of genes had been performed by the following:
 
 > A gene is considered detected in a cell if it has at least two unique UMIs (transcripts) associated with it.
 For each analysis, genes were removed that were detected in less than 10 nuclei.
 
-However, we see that this is not the case our current dataset, either because it had not yet been applied or was applied before nuclei removal.
+However, we see that this is not the case our current dataset, either because it had not yet been applied or was applied before nuclei removal and not again after.
 
 ```{r}
 head(rowData(sce)$n_cells_by_counts[order(rowData(sce)$n_cells_by_counts)])
 ```
 
-It can be seen that the presence of these genes creates a distinctly negative skew.
+It can be seen that the presence of these genes creates a distinctly negative skew, which may have unwanted effects on downstream analysis.
 
-```{r, fig.height = 6}
+```{r, fig.height = 5}
 par(mfrow = c(1, 3), mar = c(5, 4, 1, 1))
 hist(
   log10(rowData(sce)$mean_counts + 1e-6), col = "grey80",  main = "",
@@ -556,7 +529,7 @@ plot(
 ```
 
 Therefore, we remove genes in the manner specified in @habib_massively_2017.
-As this step is destructive and irreversible, we first save a copy of the SCE object thus far for analyses in other projects that will use the complete data.
+As this step is destructive, we first save a copy of the SCE object thus far for analyses that wish to use the complete data.
 
 ```{r}
 saveRDS(sce, file.path(results_dir, "data", "sce_orig.rds"))
@@ -568,7 +541,9 @@ dim(sce)
 
 We see a robust improvement in normality.
 
-```{r, fig.height = 6}
+```{r, fig.height = 5}
+sce <- calculateQCMetrics(sce)
+
 par(mfrow = c(1, 3), mar = c(5, 4, 1, 1))
 hist(
   log10(rowData(sce)$mean_counts + 1e-6), col = "grey80",  main = "",
@@ -593,15 +568,16 @@ plotExprsFreqVsMean(sce)
 ## Normalization
 
 We use `computeSumFactors` from the `scran` package to perform normalization.
-This function uses a linear deconvolution system to account for expected variation across different cell/nuclei types/sizes [@l_lun_pooling_2016], producing "size factor" values that indicate the extent to which a cell/nucleus should be scaled.
-We also perform a rough clustering of our nuclei, which improves accuracy on highly heterogenous sets.
+This function uses a linear deconvolution system to account for expected variation across different cell types/sizes, producing "size factor" values that indicate the extent to which nuclei should be scaled.
+We also perform a rough clustering of our nuclei, which improves accuracy on highly heterogenous data such as that from the brain.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "quickCluster.rds")
 if (file.exists(rds)) {
   quickCluster <- readRDS(rds)
 } else {
-  quickCluster <- quickCluster(sce, use.ranks = FALSE, min.mean = 0.1, BSPARAM = IrlbaParam())
+  set.seed(1)
+  quickCluster <- quickCluster(sce, use.ranks = FALSE, BSPARAM = IrlbaParam())
   saveRDS(quickCluster, rds)}
 ```
 
@@ -616,9 +592,8 @@ if (file.exists(rds)) {
 
 In an experiment where most systematic differences between nuclei are driven by capture efficiency and sequencing depth, we should see a correlation between size factors and library size.
 
-```{r}
+```{r, fig.height = 6}
 sce <- size_factors
-rm(size_factors)
 par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
 smoothScatter(
   sce$total_counts, sizeFactors(sce), log = "xy", xlab = "Total Counts", ylab = "Size Factors")
@@ -638,105 +613,21 @@ sce
 
 # Dimensionality Reduction
 
-Before creating our own clusters, we initially explore the data using various dimensionality reduction techniques, aided by the cluster labels provided in @habib_massively_2017.
+Before creating our own clusters, we explore the data using various dimensionality reduction techniques.
 
-## PCA
+## Habib tSNE
 
-### denoisePCA
-
-We start by applying `denoisePCA` from the `scran` package, which automatically selects PCs by modeling technical noise.
+We plot the coordinates provided in @habib_massively_2017, which were generated off of select PCs after subsetting to the most highly variable genes.
 
 ```{r}
-new_trend <- makeTechTrend(x = sce)
-```
-
-```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "denoise_pca.rds")
-if (file.exists(rds)) {
-  denoise_pca <- readRDS(rds)
-} else {
-  denoise_pca <- denoisePCA(sce, technical = new_trend, BSPARAM = IrlbaParam())
-  saveRDS(denoise_pca, rds)}
-```
-
-```{r}
-sce <- denoise_pca
-add_df <- data.frame(reducedDim(sce, "PCA"))
-names(add_df) <- paste0("denoise_pc", seq(ncol(add_df)))
-colData(sce) <- cbind(
-  colData(sce), denoise_pc1 = add_df$denoise_pc1, denoise_pc2 = add_df$denoise_pc2)
-
 # Set up data frame for ggplot2.
 gg_df <- data.frame(
   colData(sce)[ , c(
     "sample", "cell_id_stem", paste0("habib_tsne", 1:2),
-    "log10_total_features_by_counts", "habib_cluster", "habib_cluster_name")],
-  add_df[1:2])
+    "log10_total_features_by_counts", "habib_cluster", "habib_cluster_name")])
 rownames(gg_df) <- NULL
 gg_df$habib_cluster_name <- factor(gg_df$habib_cluster_name)
-```
 
-We use the first 34 PCs, chosen by visually identifying the dropoff in variance explained.
-
-```{r}
-par(mfrow = c(1, 1))
-plot(
-  log10(attr(reducedDim(sce), "percentVar")), xlab = "PC",
-  ylab = "log10(Proportion of Variance Explained)", pch = 20,
-  cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
-abline(v = 34, lty = 2, col = "red")
-```
-
-We take a closer look at the first four components and their ability to explain the cluster labels defined in @habib_massively_2017.
-
-```{r}
-plotPCA(sce, ncomponents = 4, colour_by = "habib_cluster_name") +
-  ggtitle("Habib Clusters denoisePCA") + theme(legend.title = element_blank())
-```
-
-### SVD PCA
-
-As an alternative, we can also calculate a truncated SVD (singular value decomposition) from which PCs can be extracted from it.
-This approach was found to have high accuracy in a preprint review of PCA methods for scRNAseq [@tsuyuzaki_benchmarking_2019].
-
-```{r}
-edat <- t(as.matrix(logcounts(sce)))
-edat <- scale(edat)
-```
-
-We set the desired eigentriples to the number of components selected after inspecting the `denoisePCA` results.
-
-```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "ppk.rds")
-if (file.exists(rds)) {
-  ppk <- readRDS(rds)
-} else {
-  ppk <- propack.svd(edat, neig = 34)
-  saveRDS(ppk, rds)}
-```
-
-```{r}
-svd_pca <- t(ppk$d * t(ppk$u))
-add_df <- data.frame(svd_pca)
-names(add_df) <- paste0("svd_pc", seq(ncol(add_df)))
-colData(sce) <- cbind(
-  colData(sce), svd_pc1 = add_df$svd_pc1, svd_pc2 = add_df$svd_pc2)
-gg_df <- data.frame(gg_df, add_df[1:2])
-
-dim_red_plot(
-  data = gg_df, x = "svd_pc1", y = "svd_pc2", col = "habib_cluster_name", type = "other") +
-  xlab("PC1") + ylab("PC2") + ggtitle("Habib Clusters SVD PCA")
-```
-
-## tSNE
-
-We plot the tSNE coordinates provided in @habib_massively_2017 as well create new ones off of the PCs just created.
-
-### Habib
-
-It should be noted that the tSNE coordinates provided were generated using HVGs, not all genes in the set.
-
-```{r}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
   habib_cluster_name = levels(gg_df$habib_cluster_name),
@@ -759,17 +650,61 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) Habib tSNE")
 ```
 
-### denoisePCA tSNE
+## denoisePCA
 
-We first try using the first 34 PCs from the `denoisePCA` function.
-The perplexity value is set to 100, as was used in @habib_massively_2017.
+To replicate @habib_massively_2017, we start by applying `denoisePCA` from the `scran` package.
+This function can automatically select the number of PCs to retain through the modeling of technical noise.
+As @habib_massively_2017 describes, PC selection was performed but we do not know the exact number retained:
+
+> [We] chose the most significant principal components (or PCs) based on the largest eigen value gap...
+
+```{r}
+new_trend <- makeTechTrend(x = sce)
+```
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "denoise_pca.rds")
+if (file.exists(rds)) {
+  denoise_pca <- readRDS(rds)
+} else {
+  set.seed(1)
+  denoise_pca <- denoisePCA(sce, technical = new_trend, BSPARAM = IrlbaParam())
+  saveRDS(denoise_pca, rds)}
+```
+
+```{r}
+sce <- denoise_pca
+add_df <- data.frame(reducedDim(sce, "PCA"))
+names(add_df) <- paste0("denoise_pc", seq(ncol(add_df)))
+colData(sce) <- cbind(
+  colData(sce), denoise_pc1 = add_df$denoise_pc1, denoise_pc2 = add_df$denoise_pc2)
+gg_df <- data.frame(gg_df, add_df[1:2])
+```
+
+The results suggest retaining the following number of PCs:
+
+```{r}
+ncol(reducedDim(sce, "PCA"))
+par(mfrow = c(1, 1))
+plot(
+  log10(attr(reducedDim(sce), "percentVar")), xlab = "PC",
+  ylab = "log10(Proportion of Variance Explained)", pch = 20,
+  cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
+abline(v = ncol(reducedDim(sce, "PCA")), lty = 2, col = "red")
+```
+
+### tSNE
+
+Although we only intend to use `denoisePCA` for PC selection, we see what a tSNE would look like with it as input.
+We use a perplexity of 100 for all tSNE plots, the same value used in @habib_massively_2017.
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "denoise_tsne.rds")
 if (file.exists(rds)) {
   tsne <- readRDS(rds)
 } else {
-  tsne <- runTSNE(sce, use_dimred = "PCA", n_dimred = 34, perplexity = 100, rand_seed = 1)
+  tsne <- runTSNE(
+    sce, use_dimred = "PCA", n_dimred = ncol(reducedDim(sce, "PCA")), perplexity = 100, rand_seed = 1)
   saveRDS(tsne, rds)}
 ```
 
@@ -791,11 +726,6 @@ dim_red_plot(
   data = gg_df, x = "denoise_tsne1", y = "denoise_tsne2",
   col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters denoisePCA tSNE")
-```
-
-These PCs appear to drive a strong batch effect from certain hippocampal samples.
-
-```{r}
 dim_red_plot(
   data = gg_df, x = "denoise_tsne1", y = "denoise_tsne2",
   col = "cell_id_stem", type = "other") +
@@ -806,9 +736,44 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) denoisePCA tSNE")
 ```
 
-### SVD PCA tSNE
+While the tSNE has fair agreement with @habib_massively_2017, it shows decreased ability to resolve clusters and is strongly influenced by a batch effects, particularly from certain hippocampal samples.
 
-Next using the SVD PCs.
+### SVD PCA
+
+The PCA method used for downstream analysis in @habib_massively_2017 is described:
+
+> We used the fast ‘rpca’ function in R (package ‘rsvd’)...
+
+We use it as well, with a number of PCs equal to those suggested by `denoisePCA`.
+
+```{r}
+edat <- t(as.matrix(logcounts(sce)))
+edat <- scale(edat)
+```
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "rpca.rds")
+if (file.exists(rds)) {
+  rpca <- readRDS(rds)
+} else {
+  set.seed(1)
+  rpca <- rpca(edat, k = ncol(reducedDim(sce, "PCA")))
+  saveRDS(rpca, rds)}
+```
+
+```{r}
+add_df <- data.frame(rpca$x)
+names(add_df) <- paste0("svd_pc", seq(ncol(add_df)))
+colData(sce) <- cbind(
+  colData(sce), svd_pc1 = add_df$svd_pc1, svd_pc2 = add_df$svd_pc2)
+gg_df <- data.frame(gg_df, add_df[1:2])
+
+dim_red_plot(
+  data = gg_df, x = "svd_pc1", y = "svd_pc2", col = "habib_cluster_name", type = "other") +
+  xlab("PC1") + ylab("PC2") + ggtitle("Habib Clusters SVD PCA")
+```
+
+### tSNE
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "svd_tsne.rds")
@@ -816,12 +781,12 @@ if (file.exists(rds)) {
   tsne <- readRDS(rds)
 } else {
   set.seed(1)
-  tsne <- Rtsne(svd_pca, pca = FALSE, perplexity = 100)
+  tsne <- Rtsne(rpca$x, pca = FALSE, perplexity = 100)
   saveRDS(tsne, rds)}
 ```
 
 ```{r}
-reducedDims(sce) <- SimpleList(PCA = svd_pca, TSNE = tsne$Y)
+reducedDims(sce) <- SimpleList(PCA = rpca$x, TSNE = tsne$Y)
 add_df <- data.frame(reducedDim(sce, "TSNE"))
 names(add_df) <- paste0("svd_tsne", seq(ncol(add_df)))
 colData(sce) <- cbind(
@@ -837,11 +802,6 @@ label_df2 <- gg_df %>%
 dim_red_plot(
   data = gg_df, x = "svd_tsne1", y = "svd_tsne2", col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters SVD tSNE")
-```
-
-Note that the batch effect has been somewhat mitigated.
-
-```{r}
 dim_red_plot(
   data = gg_df, x = "svd_tsne1", y = "svd_tsne2", col = "cell_id_stem", type = "other") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Sample Distribution SVD tSNE")
@@ -851,18 +811,23 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) SVD tSNE")
 ```
 
+We see that the batch effect is somewhat mitigated and the overall visualization is greatly improved.
+
 ## HVG
 
-HVGs are those that exhibit a high amount of biological signal relative to background noise and can often offer better clustering performance than using all genes in a dataset.
-As we do not have spike-in transcripts, we choose to model the technical noise as Poisson and create a fitted trend on that basis.
-Dimensionality reduction sections follow a slightly abbreviated version of the workflow described earlier.
+Describing the selection of HVGs, @habib_massively_2017 states:
+
+> we fit a relationship between mean counts and coefficient of variation using a gamma distribution on the data from all of the genes and ranked genes by the extent of excess variation as a function of their mean expression...
+
+We carry out a similar procedure using the workflow suggested by the `scran` package and then perform dimensionality reduction as described earlier.
+As there are no spike-in transcripts, we first model technical noise as Poisson and create a fitted trend on that basis.
 
 ```{r}
 fit <- trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
 par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
 plot(
   fit$mean, fit$var, pch = 20,
-  col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "log(Mean)", ylab = "Variance")
+  col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "Mean Log-expression", ylab = "Variance")
 curve(fit$trend(x), col = "orange", lwd = 2, add = TRUE)
 curve(new_trend(x), col = "red", lwd = 2, add = TRUE)
 legend(
@@ -877,25 +842,61 @@ We extract the genes with the largest biological components and plot them here.
 fit$trend <- new_trend
 dec <- decomposeVar(fit = fit)
 rm(fit)
-plotExpression(sce, features = rownames(dec[order(dec$bio, decreasing = TRUE), ])[1:10])
+top_dec <- rownames(dec[order(dec$bio, decreasing = TRUE), ])[1:10]
+plotExpression(sce, features = top_dec) +
+  stat_summary(
+    fun.y = median, fun.ymin = median, fun.ymax = median, geom = "crossbar", width = 0.3, alpha = 0.8)
 ```
 
-We select HVGs by their FDR values, using a standard threshold of less than or equal to 0.05, and create a new SCE object with the subset data.
+The number of HVGs is not stated in @habib_massively_2017, so we threshold FDR and biological component values to select a conventional amount of roughly 2,000 HVGs and create a new SCE object.
 
-```{r}
+```{r, fig.height = 6}
+dec_hist <- dec
+dec_hist$FDR[which(dec$FDR < 0.001)] <- 0.001
+dec_hist$bio[which(dec$bio >= 0.008)] = 0.008
 par(mfrow = c(1, 2))
-hist(log10(dec$FDR), breaks = 100, main = "")
-hist(log10(dec$bio), breaks = 100, main = "")
+hist(log10(dec_hist$FDR), breaks = 100, main = "")
+hist(log10(dec_hist$bio), breaks = 100, main = "")
 
-keep <- which(dec$FDR <= 0.05)
+keep <- which(dec$FDR < 0.001 & dec$bio >= 0.008)
 sce_hvg <- sce[keep, ]
-rm(dec)
+rm(dec, dec_hist)
 sce_hvg
 ```
 
-### PCA
+Due to the change in dimensions we renormalize and calculate new QC metrics.
 
-#### denoisePCA
+```{r}
+sce_hvg <- calculateQCMetrics(sce_hvg)
+```
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "quickCluster2.rds")
+if (file.exists(rds)) {
+  quickCluster <- readRDS(rds)
+} else {
+  set.seed(1)
+  quickCluster <- quickCluster(sce_hvg, use.ranks = FALSE, BSPARAM = IrlbaParam())
+  saveRDS(quickCluster, rds)}
+```
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "size_factors2.rds")
+if (file.exists(rds)) {
+  size_factors <- readRDS(rds)
+} else {
+  size_factors <- computeSumFactors(sce_hvg, cluster = quickCluster, min.mean = 0.1)
+  saveRDS(size_factors, rds)}
+```
+
+```{r}
+sce_hvg <- size_factors
+rm(size_factors)
+sce_hvg <- normalize(sce_hvg)
+sce_hvg
+```
+
+### denoisePCA
 
 ```{r}
 new_trend <- makeTechTrend(x = sce_hvg)
@@ -906,6 +907,7 @@ rds <- file.path(assets_dir, "cache", "hvg_denoise_pca.rds")
 if (file.exists(rds)) {
   denoise_pca <- readRDS(rds)
 } else {
+  set.seed(1)
   denoise_pca <- denoisePCA(sce_hvg, technical = new_trend, BSPARAM = IrlbaParam())
   saveRDS(denoise_pca, rds)}
 ```
@@ -924,15 +926,16 @@ rm(denoise_pca)
 ```
 
 ```{r}
+ncol(reducedDim(sce_hvg, "PCA"))
 par(mfrow = c(1, 1))
 plot(
   log10(attr(reducedDim(sce_hvg), "percentVar")), xlab = "PC",
   ylab = "log10(Proportion of Variance Explained)", pch = 20,
   cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
-abline(v = 34, lty = 2, col = "red")
+abline(v = ncol(reducedDim(sce_hvg, "PCA")), lty = 2, col = "red")
 ```
 
-#### SVD PCA
+### SVD PCA
 
 ```{r}
 edat <- t(as.matrix(logcounts(sce_hvg)))
@@ -940,17 +943,17 @@ edat <- scale(edat)
 ```
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "hvg_ppk.rds")
+rds <- file.path(assets_dir, "cache", "hvg_rpca.rds")
 if (file.exists(rds)) {
-  ppk <- readRDS(rds)
+  rpca <- readRDS(rds)
 } else {
-  ppk <- propack.svd(edat, neig = 34)
-  saveRDS(ppk, rds)}
+  set.seed(1)
+  rpca <- rpca(edat, k = ncol(reducedDim(sce_hvg, "PCA")))
+  saveRDS(rpca, rds)}
 ```
 
 ```{r}
-svd_pca <- t(ppk$d * t(ppk$u))
-add_df <- data.frame(svd_pca)
+add_df <- data.frame(rpca$x)
 names(add_df) <- paste0("hvg_svd_pc", seq(ncol(add_df)))
 colData(sce_hvg) <- cbind(
   colData(sce_hvg), hvg_svd_pc1 = add_df$hvg_svd_pc1, hvg_svd_pc2 = add_df$hvg_svd_pc2)
@@ -964,11 +967,7 @@ dim_red_plot(
   xlab("PC1") + ylab("PC2") + ggtitle("Habib Clusters HVG SVD PCA")
 ```
 
-### tSNE
-
-For brevity, we only focus on SVG PCs due their robustness against the influence of batch effects.
-
-#### SVD PCA tSNE
+#### tSNE
 
 ```{r, cache = FALSE}
 rds <- file.path(assets_dir, "cache", "hvg_svd_tsne.rds")
@@ -976,12 +975,12 @@ if (file.exists(rds)) {
   tsne <- readRDS(rds)
 } else {
   set.seed(1)
-  tsne <- Rtsne(svd_pca, pca = FALSE, perplexity = 100)
+  tsne <- Rtsne(rpca$x, pca = FALSE, perplexity = 100)
   saveRDS(tsne, rds)}
 ```
 
 ```{r}
-reducedDims(sce_hvg) <- SimpleList(PCA = svd_pca, TSNE = tsne$Y)
+reducedDims(sce_hvg) <- SimpleList(PCA = rpca$x, TSNE = tsne$Y)
 add_df <- data.frame(reducedDim(sce_hvg, "TSNE"))
 names(add_df) <- paste0("hvg_svd_tsne", seq(ncol(add_df)))
 colData(sce_hvg) <- cbind(
@@ -989,7 +988,7 @@ colData(sce_hvg) <- cbind(
 colData(sce) <- cbind(
   colData(sce), hvg_svd_tsne1 = add_df$hvg_svd_tsne1, hvg_svd_tsne2 = add_df$hvg_svd_tsne2)
 gg_df <- data.frame(gg_df, add_df)
-rm(svd_pca, tsne)
+rm(rpca, tsne, add_df)
 
 # Setup for automatic placement of cluster labels.
 label_df2 <- gg_df %>%
@@ -1009,40 +1008,30 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) HVG SVD tSNE")
 ```
 
+After following the methods of @habib_massively_2017 closely, we find that the resulting dimensionality reduction best captures the one seen in the original publication.
+
 # Clustering
 
 The previous sections utilized cluster labels provided in @habib_massively_2017, so now we will see if we can generate clusters that replicate them.
-We opt to use HVGs for both cluster input and the tSNE coordinates as they appear to be in better agreeance with the original publication, particularly in the GABA, exPFC2, and exCA1 clusters.
+The authors explain that they computed clusters by:
+
+> using the top significant PCs as an input to a graph-based clustering algorithm...
 
 ## Seurat
 
-We start our clustering approach with Seurat as it is graph-based like the approach used in @habib_massively_2017.
-Seurat also heuristically selects the number of clusters as opposed to the user providing it a-priori, though this can be largely influenced by the `resolution` parameter in `FindClusters`.
-Although we know the number of clusters we intend to replicate, due to differences in algorithmic implementations, greater accuracy may be achieved with slightly more or less clusters.
+The package `Seurat` uses a nearest neighbor graph clustering method, like that in @habib_massively_2017.
+As part of our input, we use the genes and SVD PCs selected during the HVG steps.
+The `resolution` parameter of `FindClusters()` is tweaked to generate the desired 18 clusters.
 
 ```{r}
-seurat <- as.Seurat(sce, counts = "counts", data = NULL)
-
-# nfeatures is set to the number of HVGs obtained earlier.
-seurat <- FindVariableFeatures(seurat, selection.method = "vst", nfeatures = 6941)
-
-seurat <- ScaleData(seurat, rownames(seurat))
-seurat <- RunPCA(seurat, features = VariableFeatures(object = seurat))
-```
-
-As done earlier, we choose the number of PCs for downstream analysis by visually identifying a dropoff in explained variance.
-In this case, the value chosen is 31.
-
-```{r}
-ElbowPlot(seurat, ndims = 50)
-```
-
-```{r}
-seurat <- RunTSNE(object = seurat, dims = 1:31, check_duplicates = FALSE)
-seurat <- FindNeighbors(seurat, dims = 1:31)
-seurat <- FindClusters(seurat, resolution = 0.6)
+seurat <- as.Seurat(sce_hvg, counts = "counts", data = NULL)
+seurat <- NormalizeData(seurat)
+seurat <- FindVariableFeatures(seurat, nfeatures = dim(sce_hvg)[1])
+seurat <- ScaleData(seurat, features = rownames(seurat))
+seurat <- FindNeighbors(seurat, reduction = "PCA", dims = 1:ncol(reducedDim(sce_hvg, "PCA")))
+seurat <- FindClusters(seurat, resolution = 1.1)
 gg_df$seurat_clusters <- seurat$seurat_clusters
-head(Idents(seurat), 4)
+seurat
 
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
@@ -1055,143 +1044,95 @@ label_df2 <- gg_df %>%
 dim_red_plot(
   data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "seurat_clusters", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters Habib tSNE")
-```
-
-## k-means
-
-Although our Seurat clusters have some level of agreement with the tSNE from @habib_massively_2017, we see noticeable deviation as well.
-As an alternative method, we try applying a simple k-means using selected PCs and the HVGs.
-
-```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "km_18.rds")
-if (file.exists(rds)) {
-  km_18 <- readRDS(rds)
-} else {
-  km_18 <- kmeans(
-    reducedDim(sce_hvg, "PCA"), centers = 18, iter.max = 1e8, nstart = 2500, algorithm = "MacQueen")
-  saveRDS(km_18, rds)}
-```
-
-```{r}
-gg_df$km_18_clusters <- as.factor(km_18$cluster)
-rm(km_18)
 
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  km_18_clusters = levels(gg_df$km_18_clusters), label = levels(gg_df$km_18_clusters))
+  habib_cluster_name = levels(gg_df$habib_cluster_name),
+  label = levels(gg_df$habib_cluster_name))
 label_df2 <- gg_df %>%
-  group_by(km_18_clusters) %>%
+  group_by(habib_cluster_name) %>%
   summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "km_18_clusters", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters Habib tSNE")
+  data = gg_df, x = "habib_tsne1", y = "habib_tsne2",
+  col = "habib_cluster_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
 ```
 
-Interestingly, it appears that our k-means clusters have greater overlap with the tSNE from @habib_massively_2017, though this is not true for all clusters, such the exCA ones.
+Our results show interesting similarities and differences with @habib_massively_2017.
+One interpretation is that our attempt clustered common cell types (GABA, ASC, ODC, exCA) more broadly while pulling out a few new putative rare cell types.
+While this pattern is not fully represented by the tSNE coordinates from @habib_massively_2017, we see that they are actually well supported by our tSNE that used the same inputs as to Seurat.
+
+```{r}
+# Setup for automatic placement of cluster labels.
+label_df <- data.frame(
+  seurat_clusters = levels(gg_df$seurat_clusters), label = levels(gg_df$seurat_clusters))
+label_df2 <- gg_df %>%
+  group_by(seurat_clusters) %>%
+  summarize(hvg_svd_tsne1 = median(hvg_svd_tsne1), hvg_svd_tsne2 = median(hvg_svd_tsne2)) %>%
+  left_join(label_df)
+
+dim_red_plot(
+  data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2", col = "seurat_clusters", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG SVD tSNE")
+```
+
+We conclude that our replication was generally successful but with the potential for improvement as well as findings that may be complementary to @habib_massively_2017.
 
 ## Labeling {.tabset}
 
-Finally, we conclude our analysis by assigning labels for the new clusters based on their proximity to the clusters in the original paper and visualize them using various tSNE coordinates.
+Finally, we assign labels for the new clusters based on their proximity to the clusters in the original paper and visualize them using tSNE.
 
 ```{r}
 gg_df$seurat_clusters_name <- NA
 seurat_clusters <- as.integer(gg_df$seurat_clusters)
 for (i in 1:length(seurat_clusters)) {
   if (seurat_clusters[i] == 1) {
-    gg_df[i, ncol(gg_df)] <- "exPFC1"
+    gg_df[i, ncol(gg_df)] <- "exPFC1.1"
   } else if (seurat_clusters[i] == 2) {
-    gg_df[i, ncol(gg_df)] <- "exDG"
+    gg_df[i, ncol(gg_df)] <- "ODC"
   } else if (seurat_clusters[i] == 3) {
-    gg_df[i, ncol(gg_df)] <- "ODC1"
+    gg_df[i, ncol(gg_df)] <- "ASC"
   } else if (seurat_clusters[i] == 4) {
-    gg_df[i, ncol(gg_df)] <- "GABA1"
+    gg_df[i, ncol(gg_df)] <- "GABA"
   } else if (seurat_clusters[i] == 5) {
-    gg_df[i, ncol(gg_df)] <- "ASC1"
-  } else if (seurat_clusters[i] == 6) {
-    gg_df[i, ncol(gg_df)] <- "ODC2"
-  } else if (seurat_clusters[i] == 7) {
-    gg_df[i, ncol(gg_df)] <- "exPFC2.1"
-  } else if (seurat_clusters[i] == 8) {
-    gg_df[i, ncol(gg_df)] <- "exCA1"
-  } else if (seurat_clusters[i] == 9) {
-    gg_df[i, ncol(gg_df)] <- "OPC"
-  } else if (seurat_clusters[i] == 10) {
-    gg_df[i, ncol(gg_df)] <- "MG"
-  } else if (seurat_clusters[i] == 11) {
-    gg_df[i, ncol(gg_df)] <- "ASC2"
-  } else if (seurat_clusters[i] == 12) {
-    gg_df[i, ncol(gg_df)] <- "END"
-  } else if (seurat_clusters[i] == 13) {
-    gg_df[i, ncol(gg_df)] <- "GABA2.2"
-  } else if (seurat_clusters[i] == 14) {
-    gg_df[i, ncol(gg_df)] <- "exCA1"
-  } else if (seurat_clusters[i] == 15) {
-    gg_df[i, ncol(gg_df)] <- "Unlabeled1"
-  } else if (seurat_clusters[i] == 16) {
-    gg_df[i, ncol(gg_df)] <- "NSC"
-  } else if (seurat_clusters[i] == 17) {
-    gg_df[i, ncol(gg_df)] <- "exPFC2.2"
-  } else if (seurat_clusters[i] == 18) {
-    gg_df[i, ncol(gg_df)] <- "Unlabeled2"}}
-seurat_clusters_id <- c(
-  "exPFC1", "exDG", "ODC1", "GABA1", "ASC1", "ODC2", "exPFC2.1", "exCA1", "OPC",
-  "MG", "ASC2", "END", "GABA2.2", "exCA1", "Unlabeled1", "NSC", "exPFC2.2", "Unlabeled2")
-names(seurat_clusters_id) <- levels(seurat)
-seurat <- RenameIdents(seurat, seurat_clusters_id)
-
-gg_df$km_18_clusters_name <- NA
-km_18_clusters <- as.integer(gg_df$km_18_clusters)
-for (i in 1:length(km_18_clusters)) {
-  if (km_18_clusters[i] == 1) {
-    gg_df[i, ncol(gg_df)] <- "MG"
-  } else if (km_18_clusters[i] == 2) {
-    gg_df[i, ncol(gg_df)] <- "exCA"
-  } else if (km_18_clusters[i] == 3) {
-    gg_df[i, ncol(gg_df)] <- "Unlabeled2.2"
-  } else if (km_18_clusters[i] == 4) {
-    gg_df[i, ncol(gg_df)] <- "ASC1"
-  } else if (km_18_clusters[i] == 5) {
-    gg_df[i, ncol(gg_df)] <- "END1"
-  } else if (km_18_clusters[i] == 6) {
-    gg_df[i, ncol(gg_df)] <- "GABA2"
-  } else if (km_18_clusters[i] == 7) {
-    gg_df[i, ncol(gg_df)] <- "Unlabeled2.1"
-  } else if (km_18_clusters[i] == 8) {
-    gg_df[i, ncol(gg_df)] <- "ODC2"
-  } else if (km_18_clusters[i] == 9) {
-    gg_df[i, ncol(gg_df)] <- "exPFC"
-  } else if (km_18_clusters[i] == 10) {
     gg_df[i, ncol(gg_df)] <- "exDG"
-  } else if (km_18_clusters[i] == 11) {
-    gg_df[i, ncol(gg_df)] <- "END2"
-  } else if (km_18_clusters[i] == 12) {
-    gg_df[i, ncol(gg_df)] <- "GABA1"
-  } else if (km_18_clusters[i] == 13) {
+  } else if (seurat_clusters[i] == 6) {
+    gg_df[i, ncol(gg_df)] <- "exCA"
+  } else if (seurat_clusters[i] == 7) {
     gg_df[i, ncol(gg_df)] <- "OPC"
-  } else if (km_18_clusters[i] == 14) {
+  } else if (seurat_clusters[i] == 8) {
+    gg_df[i, ncol(gg_df)] <- "MG"
+  } else if (seurat_clusters[i] == 9) {
+    gg_df[i, ncol(gg_df)] <- "END"
+  } else if (seurat_clusters[i] == 10) {
     gg_df[i, ncol(gg_df)] <- "Unlabeled1"
-  } else if (km_18_clusters[i] == 15) {
-    gg_df[i, ncol(gg_df)] <- "ASC2"
-  } else if (km_18_clusters[i] == 16) {
-    gg_df[i, ncol(gg_df)] <- "END3"
-  } else if (km_18_clusters[i] == 17) {
+  } else if (seurat_clusters[i] == 11) {
     gg_df[i, ncol(gg_df)] <- "NSC"
-  } else if (km_18_clusters[i] == 18) {
-    gg_df[i, ncol(gg_df)] <- "ODC1"}}
+  } else if (seurat_clusters[i] == 12) {
+    gg_df[i, ncol(gg_df)] <- "New1"
+  } else if (seurat_clusters[i] == 13) {
+    gg_df[i, ncol(gg_df)] <- "Unlabeled2.1"
+  } else if (seurat_clusters[i] == 14) {
+    gg_df[i, ncol(gg_df)] <- "New2"
+  } else if (seurat_clusters[i] == 15) {
+    gg_df[i, ncol(gg_df)] <- "exPFC1.2"
+  } else if (seurat_clusters[i] == 16) {
+    gg_df[i, ncol(gg_df)] <- "New3"
+  } else if (seurat_clusters[i] == 17) {
+    gg_df[i, ncol(gg_df)] <- "Unlabeled3"
+  } else if (seurat_clusters[i] == 18) {
+    gg_df[i, ncol(gg_df)] <- "Unlabeled2.2"}}
 
 colData(sce_hvg) <- cbind(
   colData(sce_hvg), seurat_clusters = gg_df$seurat_clusters,
-  seurat_clusters_name = gg_df$seurat_clusters_name, km_18_clusters = gg_df$km_18_clusters,
-  km_18_clusters_name = gg_df$km_18_clusters_name)
+  seurat_clusters_name = gg_df$seurat_clusters_name)
 colData(sce) <- cbind(
   colData(sce), seurat_clusters = gg_df$seurat_clusters,
-  seurat_clusters_name = gg_df$seurat_clusters_name, km_18_clusters = gg_df$km_18_clusters,
-  km_18_clusters_name = gg_df$km_18_clusters_name)
-gg_df$seurat_clusters_name <- as.factor(gg_df$seurat_clusters_name)
-gg_df$km_18_clusters_name <- factor(gg_df$km_18_clusters_name)
-names(colData(sce))
+  seurat_clusters_name = gg_df$seurat_clusters_name)
+gg_df$seurat_clusters_name <- factor(gg_df$seurat_clusters_name)
+rm(seurat)
 ```
 
 ### Seurat Clusters Habib tSNE
@@ -1211,23 +1152,6 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters Habib tSNE")
 ```
 
-### KM 18 Clusters Habib tSNE
-
-```{r}
-# Setup for automatic placement of cluster labels.
-label_df <- data.frame(
-  km_18_clusters_name = levels(gg_df$km_18_clusters_name),
-  label = levels(gg_df$km_18_clusters_name))
-label_df2 <- gg_df %>%
-  group_by(km_18_clusters_name) %>%
-  summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
-  left_join(label_df)
-
-dim_red_plot(
-  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "km_18_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters Habib tSNE")
-```
-
 ### Habib Clusters Habib tSNE
 
 ```{r}
@@ -1244,27 +1168,22 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
 ```
 
-### Seurat Clusters Seurat tSNE
-
-```{r}
-DimPlot(object = seurat, reduction = "tsne", label = TRUE)
-```
-
-### KM 18 Clusters HVG SVD tSNE
+### Seurat Clusters HVG SVD tSNE
 
 ```{r}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  km_18_clusters_name = levels(gg_df$km_18_clusters_name),
-  label = levels(gg_df$km_18_clusters_name))
+  seurat_clusters_name = levels(gg_df$seurat_clusters_name),
+  label = levels(gg_df$seurat_clusters_name))
 label_df2 <- gg_df %>%
-  group_by(km_18_clusters_name) %>%
+  group_by(seurat_clusters_name) %>%
   summarize(hvg_svd_tsne1 = median(hvg_svd_tsne1), hvg_svd_tsne2 = median(hvg_svd_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2", col = "km_18_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("KM 18 Clusters HVG SVD tSNE")
+  data = gg_df, x = "hvg_svd_tsne1", y = "hvg_svd_tsne2",
+  col = "seurat_clusters_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG SVD tSNE")
 ```
 
 ### Habib Clusters HVG SVD tSNE
@@ -1291,6 +1210,5 @@ Here we write relevant results to disk, output the `sessionInfo`, and create a b
 ```{r}
 saveRDS(sce, file.path(results_dir, "data", "sce.rds"))
 saveRDS(sce_hvg, file.path(results_dir, "data", "sce_hvg.rds"))
-saveRDS(seurat, file.path(results_dir, "data", "seurat.rds"))
 sessionInfo()
 ```
