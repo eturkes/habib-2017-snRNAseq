@@ -175,7 +175,7 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters Habib tSNE")
 ```
 
-### Seurat Clusters HVG SVD tSNE
+### Seurat Clusters HVG tSNE
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
@@ -192,7 +192,7 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG tSNE")
 ```
 
-### Habib Clusters HVG SVD tSNE
+### Habib Clusters HVG tSNE
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
@@ -1071,7 +1071,7 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
 ```
 
-### Seurat Clusters HVG SVD tSNE
+### Seurat Clusters HVG tSNE
 
 ```{r}
 # Setup for automatic placement of cluster labels.
@@ -1088,7 +1088,7 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG tSNE")
 ```
 
-### Habib Clusters HVG SVD tSNE
+### Habib Clusters HVG tSNE
 
 ```{r}
 # Setup for automatic placement of cluster labels.
