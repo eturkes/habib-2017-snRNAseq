@@ -932,7 +932,8 @@ if (file.exists(rds)) {
   seurat <- FindVariableFeatures(seurat, nfeatures = dim(sce_hvg)[1])
   seurat <- ScaleData(seurat, features = rownames(seurat))
   seurat <- FindNeighbors(seurat, reduction = "PCA", dims = 1:retain_pcs)
-  seurat <- FindClusters(seurat, resolution = 1.05)}
+  seurat <- FindClusters(seurat, resolution = 1.05)
+  saveRDS(seurat, rds)}
 ```
 
 ```{r}
