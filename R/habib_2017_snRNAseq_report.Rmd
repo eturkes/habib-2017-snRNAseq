@@ -72,7 +72,7 @@ The source code and instructions for rerunning the analysis can be found at [git
 
 # Final Results
 
-**Read just the following sub-sections (1.1-1.2) for the final results of the analysis and a brief summary of the methods.**
+**Read just the following sub-sections (1.1-1.4) for the final results of the analysis and a brief summary of the methods.**
 
 ```{r, include = FALSE}
 packages <- c(
@@ -110,23 +110,28 @@ dim_red_plot <- function(data, x, y, col, type) {
 sce_orig <- readRDS(file.path(results_dir, "data", "sce_orig.rds"))
 sce <- readRDS(file.path(results_dir, "data", "sce.rds"))
 sce_hvg <- readRDS(file.path(results_dir, "data", "sce_hvg.rds"))
+seurat_hvg <- readRDS(file.path(results_dir, "data", "seurat_hvg.rds"))
+seurat_hvg_markers <- readRDS(file.path(results_dir, "data", "seurat_hvg_markers.rds"))
 ```
 
-## SCE Object of Original Data
+## SCE and Seurat Objects
 
 The dataset in @habib_massively_2017 includes transcript counts, cluster labels, and tSNE coordinates, which were used to recreate Figure 2a of the paper following protocols described in the methods section where possible.
 The processed data is included in this analysis as an SCE (SingleCellExperiment) object alongside an SCE subsetted to the top HVGs (highly variable genes, about 5,000 selected) and an SCE without additional QC.
-They can be found in the `results/data/` directory.
+A Seurat object was also created using the HVGs, along with its marker genes
+All objects can be found in the `results/data/` directory.
 
 ```{r, message = FALSE}
 sce_orig
 sce
 sce_hvg
+seurat_hvg
+head(seurat_hvg_markers)
 ```
 
-## Reproduction and Replication {.tabset}
+## Replication of Figure 2a {.tabset}
 
-The below tabs display reproductions and replications of the results in @habib_massively_2017.
+The below tabs display reproductions and replications of Figure 2a from @habib_massively_2017.
 Note the presence of several "Unlabeled" clusters that are included in the dataset but removed from the final figures in the publication.
 Overall, it can be seen that our reproduction and replication of the results in @habib_massively_2017 agree well with the original publication, with some reasonable deviation in the clustering.
 These differences suggest both room for improving this analysis and new findings that may complement the original paper.
@@ -136,10 +141,10 @@ These differences suggest both room for improving this analysis and new findings
 gg_df <- data.frame(
   colData(sce)[ , c(
     paste0("habib_tsne", 1:2), paste0("hvg_tsne", 1:2),
-    "habib_cluster_name", "seurat_clusters_name")])
+    "habib_cluster_name", "seurat_hvg_clusters_name")])
 rownames(gg_df) <- NULL
 gg_df$habib_cluster_name <- factor(gg_df$habib_cluster_name)
-gg_df$seurat_clusters_name <- factor(gg_df$seurat_clusters_name)
+gg_df$seurat_hvg_clusters_name <- factor(gg_df$seurat_hvg_clusters_name)
 ```
 
 ### Habib Clusters Habib tSNE
@@ -158,38 +163,39 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
 ```
 
-### Seurat Clusters Habib tSNE
+### HVG Seurat Clusters Habib tSNE
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_clusters_name = levels(gg_df$seurat_clusters_name),
-  label = levels(gg_df$seurat_clusters_name))
+  seurat_hvg_clusters_name = levels(gg_df$seurat_hvg_clusters_name),
+  label = levels(gg_df$seurat_hvg_clusters_name))
 label_df2 <- gg_df %>%
-  group_by(seurat_clusters_name) %>%
+  group_by(seurat_hvg_clusters_name) %>%
   summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "seurat_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters Habib tSNE")
+  data = gg_df, x = "habib_tsne1", y = "habib_tsne2",
+  col = "seurat_hvg_clusters_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("HVG Seurat Clusters Habib tSNE")
 ```
 
-### Seurat Clusters HVG tSNE
+### HVG Seurat Clusters HVG tSNE
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_clusters_name = levels(gg_df$seurat_clusters_name),
-  label = levels(gg_df$seurat_clusters_name))
+  seurat_hvg_clusters_name = levels(gg_df$seurat_hvg_clusters_name),
+  label = levels(gg_df$seurat_hvg_clusters_name))
 label_df2 <- gg_df %>%
-  group_by(seurat_clusters_name) %>%
+  group_by(seurat_hvg_clusters_name) %>%
   summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "seurat_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG tSNE")
+  data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "seurat_hvg_clusters_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("HVG Seurat Clusters HVG tSNE")
 ```
 
 ### Habib Clusters HVG tSNE
@@ -208,9 +214,60 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG tSNE")
 ```
 
-```{r, include = FALSE}
-rm(gg_df, label_df, label_df2, sce, sce_hvg, sce_orig)
+### Original
+
+![](../assets/habib-fig2a.png)
+
+## Replication of Figure 2d {.tabset}
+
+The heatmaps show differentially upregulated genes for each cell type (formed by combining subclusters).
+Though we cannot easily assess our replication's agreement with Figure 2d, due to that figure lacking detailed labels, we see the enrichment of expected canonical genes for each cell type.
+
+### HVG Seurat Clusters
+
+```{r, echo = FALSE, message = FALSE}
+top <- seurat_hvg_markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_logFC)
+DoHeatmap(seurat_hvg, features = top$gene, size = 1.5) +
+  NoLegend() + scale_fill_gradientn(colors = c("blue", "white", "red"))
 ```
+
+### Original
+
+![](../assets/habib-fig2d.png)
+
+## Replication of Figure 2b {.tabset}
+
+We successfully replicate the overlay of 6 select marker genes over tSNEs from @habib_massively_2017 and from this analysis.
+
+```{r, echo = FALSE, message = FALSE}
+seurat <- as.Seurat(sce, counts = "counts", data = NULL) # Missing genes when using sce_hvg.
+habib_tsne <- as.matrix(data.frame(sce$habib_tsne1, sce$habib_tsne2))
+colnames(habib_tsne) <- paste0("HabibTSNE_", 1:2)
+rownames(habib_tsne) <- colnames(sce)
+seurat[["habib_tsne"]] <- CreateDimReducObject(
+  embeddings = habib_tsne, key = "HabibTSNE_", assay = DefaultAssay(seurat))
+genes <- c("SLC17A7", "SLC1A2", "GAD1", "MBP", "PPFIA2", "PDGFRA")
+```
+
+### Habib tSNE
+
+```{r, echo = FALSE, message = FALSE}
+FeaturePlot(
+  seurat, reduction = "habib_tsne", features = genes, order = TRUE,
+  cols = c("lightgrey", "red"), max.cutoff = 20, ncol = 2)
+```
+
+### All Genes tSNE
+
+```{r, echo = FALSE, message = FALSE}
+FeaturePlot(
+  seurat, reduction = "TSNE", features = genes, order = TRUE,
+  cols = c("lightgrey", "red"), max.cutoff = 20, ncol = 2)
+```
+
+### Original
+
+![](../assets/habib-fig2b.png)
 
 # ~~~ Breakdown of Methods ~~~ {-}
 
@@ -528,10 +585,10 @@ plot(
 ```
 
 Therefore, we remove genes in the manner specified in @habib_massively_2017.
-As this step is destructive, we first save a copy of the SCE object thus far for analyses that wish to use the complete data.
+As this step is destructive, we first set aside a copy of our SCE object thus far to be saved later.
 
 ```{r}
-saveRDS(sce, file.path(results_dir, "data", "sce_orig.rds"))
+sce_orig <- sce
 detected_genes <- rowSums(counts(sce) >= 2)
 sce <- sce[which(detected_genes >= 10), ]
 head(rowData(sce)$n_cells_by_counts[order(rowData(sce)$n_cells_by_counts)])
@@ -923,34 +980,34 @@ We decide to use `Seurat` as it provides a streamlined and optimized nearest nei
 As input, we use features and selected PCs from the HVG section and the `resolution` parameter of `FindClusters()` is tweaked to generate the desired 18 clusters.
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "seurat.rds")
+rds <- file.path(assets_dir, "cache", "seurat_hvg.rds")
 if (file.exists(rds)) {
-  seurat <- readRDS(rds)
+  seurat_hvg <- readRDS(rds)
 } else {
-  seurat <- as.Seurat(sce_hvg, counts = "counts", data = NULL)
-  seurat <- NormalizeData(seurat)
-  seurat <- FindVariableFeatures(seurat, nfeatures = dim(sce_hvg)[1])
-  seurat <- ScaleData(seurat, features = rownames(seurat))
-  seurat <- FindNeighbors(seurat, reduction = "PCA", dims = 1:retain_pcs)
-  seurat <- FindClusters(seurat, resolution = 1.05)
-  saveRDS(seurat, rds)}
+  seurat_hvg <- as.Seurat(sce_hvg, counts = "counts", data = NULL)
+  seurat_hvg <- NormalizeData(seurat_hvg)
+  seurat_hvg <- FindVariableFeatures(seurat_hvg, nfeatures = dim(sce_hvg)[1])
+  seurat_hvg <- ScaleData(seurat_hvg, features = rownames(seurat_hvg))
+  seurat_hvg <- FindNeighbors(seurat_hvg, reduction = "PCA", dims = 1:retain_pcs)
+  seurat_hvg <- FindClusters(seurat_hvg, resolution = 1.05)
+  saveRDS(seurat_hvg, rds)}
 ```
 
 ```{r}
-gg_df$seurat_clusters <- seurat$seurat_clusters
-seurat
+gg_df$seurat_hvg_clusters <- seurat_hvg$seurat_clusters
+seurat_hvg
 
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_clusters = levels(gg_df$seurat_clusters), label = levels(gg_df$seurat_clusters))
+  seurat_hvg_clusters = levels(gg_df$seurat_hvg_clusters), label = levels(gg_df$seurat_hvg_clusters))
 label_df2 <- gg_df %>%
-  group_by(seurat_clusters) %>%
+  group_by(seurat_hvg_clusters) %>%
   summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "seurat_clusters", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters Habib tSNE")
+  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "seurat_hvg_clusters", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("HVG Seurat Clusters Habib tSNE")
 ```
 
 We compare the result to the clusters from the paper.
@@ -978,15 +1035,15 @@ While this finding is not fully represented by the tSNE coordinates from @habib_
 ```{r}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_clusters = levels(gg_df$seurat_clusters), label = levels(gg_df$seurat_clusters))
+  seurat_hvg_clusters = levels(gg_df$seurat_hvg_clusters), label = levels(gg_df$seurat_hvg_clusters))
 label_df2 <- gg_df %>%
-  group_by(seurat_clusters) %>%
+  group_by(seurat_hvg_clusters) %>%
   summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "seurat_clusters", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG tSNE")
+  data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "seurat_hvg_clusters", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("HVG Seurat Clusters HVG tSNE")
 ```
 
 We conclude that our clustering replication was generally successful but with the potential for improvement, and may suggest findings complementary to @habib_massively_2017.
@@ -996,54 +1053,53 @@ We conclude that our clustering replication was generally successful but with th
 Finally, we assign labels for the new clusters based on their proximity to clusters in the original paper, as well as positions in the new tSNE, and visualize them.
 
 ```{r}
-gg_df$seurat_clusters_name <- NA
-seurat_clusters <- as.integer(gg_df$seurat_clusters)
-for (i in 1:length(seurat_clusters)) {
-  if (seurat_clusters[i] == 1) {
+gg_df$seurat_hvg_clusters_name <- NA
+seurat_hvg_clusters <- as.integer(gg_df$seurat_hvg_clusters)
+for (i in 1:length(seurat_hvg_clusters)) {
+  if (seurat_hvg_clusters[i] == 1) {
     gg_df[i, ncol(gg_df)] <- "ODC"
-  } else if (seurat_clusters[i] == 2) {
+  } else if (seurat_hvg_clusters[i] == 2) {
     gg_df[i, ncol(gg_df)] <- "exPFC1.1"
-  } else if (seurat_clusters[i] == 3) {
+  } else if (seurat_hvg_clusters[i] == 3) {
     gg_df[i, ncol(gg_df)] <- "ASC1"
-  } else if (seurat_clusters[i] == 4) {
+  } else if (seurat_hvg_clusters[i] == 4) {
     gg_df[i, ncol(gg_df)] <- "exDG"
-  } else if (seurat_clusters[i] == 5) {
+  } else if (seurat_hvg_clusters[i] == 5) {
     gg_df[i, ncol(gg_df)] <- "exPFC1.2"
-  } else if (seurat_clusters[i] == 6) {
+  } else if (seurat_hvg_clusters[i] == 6) {
     gg_df[i, ncol(gg_df)] <- "exCA3"
-  } else if (seurat_clusters[i] == 7) {
+  } else if (seurat_hvg_clusters[i] == 7) {
     gg_df[i, ncol(gg_df)] <- "GABA1"
-  } else if (seurat_clusters[i] == 8) {
+  } else if (seurat_hvg_clusters[i] == 8) {
     gg_df[i, ncol(gg_df)] <- "GABA2"
-  } else if (seurat_clusters[i] == 9) {
+  } else if (seurat_hvg_clusters[i] == 9) {
     gg_df[i, ncol(gg_df)] <- "OPC"
-  } else if (seurat_clusters[i] == 10) {
+  } else if (seurat_hvg_clusters[i] == 10) {
     gg_df[i, ncol(gg_df)] <- "MG"
-  } else if (seurat_clusters[i] == 11) {
+  } else if (seurat_hvg_clusters[i] == 11) {
     gg_df[i, ncol(gg_df)] <- "END"
-  } else if (seurat_clusters[i] == 12) {
+  } else if (seurat_hvg_clusters[i] == 12) {
     gg_df[i, ncol(gg_df)] <- "Unlabeled1"
-  } else if (seurat_clusters[i] == 13) {
+  } else if (seurat_hvg_clusters[i] == 13) {
     gg_df[i, ncol(gg_df)] <- "NSC"
-  } else if (seurat_clusters[i] == 14) {
+  } else if (seurat_hvg_clusters[i] == 14) {
     gg_df[i, ncol(gg_df)] <- "ASC2"
-  } else if (seurat_clusters[i] == 15) {
+  } else if (seurat_hvg_clusters[i] == 15) {
     gg_df[i, ncol(gg_df)] <- "Unlabeled2.1"
-  } else if (seurat_clusters[i] == 16) {
+  } else if (seurat_hvg_clusters[i] == 16) {
     gg_df[i, ncol(gg_df)] <- "exPFC2"
-  } else if (seurat_clusters[i] == 17) {
+  } else if (seurat_hvg_clusters[i] == 17) {
     gg_df[i, ncol(gg_df)] <- "exCA1"
-  } else if (seurat_clusters[i] == 18) {
+  } else if (seurat_hvg_clusters[i] == 18) {
     gg_df[i, ncol(gg_df)] <- "Unlabeled2.2"}}
 
 colData(sce_hvg) <- cbind(
-  colData(sce_hvg), seurat_clusters = gg_df$seurat_clusters,
-  seurat_clusters_name = gg_df$seurat_clusters_name)
+  colData(sce_hvg), seurat_hvg_clusters = gg_df$seurat_hvg_clusters,
+  seurat_hvg_clusters_name = gg_df$seurat_hvg_clusters_name)
 colData(sce) <- cbind(
-  colData(sce), seurat_clusters = gg_df$seurat_clusters,
-  seurat_clusters_name = gg_df$seurat_clusters_name)
-gg_df$seurat_clusters_name <- factor(gg_df$seurat_clusters_name)
-rm(seurat)
+  colData(sce), seurat_hvg_clusters = gg_df$seurat_hvg_clusters,
+  seurat_hvg_clusters_name = gg_df$seurat_hvg_clusters_name)
+gg_df$seurat_hvg_clusters_name <- factor(gg_df$seurat_hvg_clusters_name)
 ```
 
 ### Seurat Clusters Habib tSNE
@@ -1051,16 +1107,17 @@ rm(seurat)
 ```{r}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_clusters_name = levels(gg_df$seurat_clusters_name),
-  label = levels(gg_df$seurat_clusters_name))
+  seurat_hvg_clusters_name = levels(gg_df$seurat_hvg_clusters_name),
+  label = levels(gg_df$seurat_hvg_clusters_name))
 label_df2 <- gg_df %>%
-  group_by(seurat_clusters_name) %>%
+  group_by(seurat_hvg_clusters_name) %>%
   summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "seurat_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters Habib tSNE")
+  data = gg_df, x = "habib_tsne1", y = "habib_tsne2",
+  col = "seurat_hvg_clusters_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("HVG Seurat Clusters Habib tSNE")
 ```
 
 ### Habib Clusters Habib tSNE
@@ -1084,16 +1141,16 @@ dim_red_plot(
 ```{r}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_clusters_name = levels(gg_df$seurat_clusters_name),
-  label = levels(gg_df$seurat_clusters_name))
+  seurat_hvg_clusters_name = levels(gg_df$seurat_hvg_clusters_name),
+  label = levels(gg_df$seurat_hvg_clusters_name))
 label_df2 <- gg_df %>%
-  group_by(seurat_clusters_name) %>%
+  group_by(seurat_hvg_clusters_name) %>%
   summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "seurat_clusters_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Seurat Clusters HVG tSNE")
+  data = gg_df, x = "hvg_tsne1", y = "hvg_tsne2", col = "seurat_hvg_clusters_name", type = "cat") +
+  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("HVG Seurat Clusters HVG tSNE")
 ```
 
 ### Habib Clusters HVG tSNE
@@ -1112,14 +1169,88 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters HVG tSNE")
 ```
 
+### Original
+
+![](../assets/habib-fig2a.png)
+
+# Differential Expresssion
+
+We examine upregulated genes in cell types formed by combining subclusters to replicate Figure 2d from @habib_massively_2017.
+
+```{r}
+seurat_clusters_id <- c(
+  "ODC", "exPFC", "ASC", "exDG", "exPFC", "exCA", "GABA", "GABA", "OPC",
+  "MG", "END", "NA", "NSC", "ASC", "NA", "exPFC", "exCA", "NA")
+names(seurat_clusters_id) <- levels(seurat_hvg)
+seurat_hvg <- RenameIdents(seurat_hvg, seurat_clusters_id)
+rm(add_df, gg_df, label_df, label_df2)
+```
+
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "seurat_hvg_markers.rds")
+if (file.exists(rds)) {
+  seurat_hvg_markers <- readRDS(rds)
+} else {
+  seurat_hvg_markers <- FindAllMarkers(seurat_hvg, only.pos = TRUE)
+  saveRDS(seurat_hvg_markers, rds)}
+```
+
+```{r}
+top <- seurat_hvg_markers %>% group_by(cluster) %>% top_n(n = 5, wt = avg_logFC)
+DoHeatmap(seurat_hvg, features = top$gene, size = 1.5) +
+  NoLegend() + scale_fill_gradientn(colors = c("blue", "white", "red"))
+```
+
+**Original**
+
+![](../assets/habib-fig2d.png)
+
+## Marker Genes {.tabset}
+
+We probe 6 select marker genes to replicate Figure 2b.
+
+```{r}
+seurat <- as.Seurat(sce, counts = "counts", data = NULL) # Missing genes when using sce_hvg.
+habib_tsne <- as.matrix(data.frame(sce$habib_tsne1, sce$habib_tsne2))
+colnames(habib_tsne) <- paste0("HabibTSNE_", 1:2)
+rownames(habib_tsne) <- colnames(sce)
+seurat[["habib_tsne"]] <- CreateDimReducObject(
+  embeddings = habib_tsne, key = "HabibTSNE_", assay = DefaultAssay(seurat))
+genes <- c("SLC17A7", "SLC1A2", "GAD1", "MBP", "PPFIA2", "PDGFRA")
+rm(top, habib_tsne)
+```
+
+### Habib tSNE
+
+```{r}
+FeaturePlot(
+  seurat, reduction = "habib_tsne", features = genes, order = TRUE,
+  cols = c("lightgrey", "red"), max.cutoff = 20, ncol = 2)
+```
+
+### All Genes tSNE
+
+```{r}
+FeaturePlot(
+  seurat, reduction = "TSNE", features = genes, order = TRUE,
+  cols = c("lightgrey", "red"), max.cutoff = 20, ncol = 2)
+```
+
+### Original
+
+![](../assets/habib-fig2b.png)
+
 # References
 
 This is the concluding section of the document.
 Here we write relevant results to disk, output the `sessionInfo`, and create a bibliography for works cited.
 
 ```{r}
+saveRDS(sce_orig, file.path(results_dir, "data", "sce_orig.rds"))
 saveRDS(sce, file.path(results_dir, "data", "sce.rds"))
 saveRDS(sce_hvg, file.path(results_dir, "data", "sce_hvg.rds"))
+saveRDS(seurat_hvg, file.path(results_dir, "data", "seurat_hvg.rds"))
+saveRDS(seurat_hvg_markers, file.path(results_dir, "data", "seurat_hvg_markers.rds"))
 
 sessionInfo()
 ```
