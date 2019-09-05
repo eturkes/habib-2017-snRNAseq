@@ -75,6 +75,8 @@ The source code and instructions for rerunning the analysis can be found at [git
 **Read just the following sub-sections (1.1-1.4) for the final results of the analysis and a brief summary of the methods.**
 
 ```{r, include = FALSE}
+results_dir <- file.path(getwd(), "..", "results")
+
 packages <- c(
   "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment", "biomaRt", "S4Vectors",
   "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "ggrepel", "BiocSingular",
@@ -82,8 +84,6 @@ packages <- c(
 invisible(suppressPackageStartupMessages(lapply(packages, library, character.only = TRUE)))
 
 options(stringsAsFactors = FALSE)
-
-results_dir <- file.path(getwd(), "..", "results")
 
 # ggplot2 function providing custom aesthetics and automatic placement of categorical labels.
 # For continuous data, a colorbar is implemented.
@@ -273,9 +273,14 @@ FeaturePlot(
 
 **Sections from here to the end break down the methods used and are optional to read.**
 
-We start by loading in any required packages and setting some global variables.
+We start by setting some global variables and loading in any required packages.
 
 ```{r}
+data_str <- "GTEx_droncseq_hip_pcf"
+data_dir <- file.path(getwd(), "..", "data")
+assets_dir <- file.path(getwd(), "..", "assets")
+results_dir <- file.path(getwd(), "..", "results")
+
 packages <- c(
   "conflicted", "BiocFileCache", "data.table", "DT", "SingleCellExperiment", "biomaRt", "S4Vectors",
   "dplyr", "SummarizedExperiment", "DropletUtils", "scater", "scran", "ggrepel", "BiocSingular",
@@ -283,11 +288,6 @@ packages <- c(
 invisible(suppressPackageStartupMessages(lapply(packages, library, character.only = TRUE)))
 
 options(stringsAsFactors = FALSE)
-
-data_str <- "GTEx_droncseq_hip_pcf"
-data_dir <- file.path(getwd(), "..", "data")
-assets_dir <- file.path(getwd(), "..", "assets")
-results_dir <- file.path(getwd(), "..", "results")
 
 # Create a cache for storing the objects of long-running computations.
 if (!dir.exists(file.path(assets_dir, "cache"))) {
