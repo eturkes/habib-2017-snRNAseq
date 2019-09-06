@@ -468,7 +468,7 @@ names(rowData(sce))
 # QC
 
 A number of QC steps that would normally be performed here were already carried out in @habib_massively_2017.
-In those cases we double-check that they were done carry them out if not.
+In those cases we double-check that they were done and carry them out if not.
 We opt not to perform additional QC beyond that described in the paper.
 
 ## Empty Droplets
