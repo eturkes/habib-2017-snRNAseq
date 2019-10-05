@@ -1,7 +1,7 @@
 ---
 title: "Habib 2017 snRNAseq Report"
 author:
-  - name: "Emir Turkes [et2628@cumc.columbia.edu]"
+  - name: "Emir Turkes [emir.turkes@eturkes.com]"
   - name: "Columbia University"
 date: '`r strftime(Sys.time(), format = "%B %d, %Y")`'
 bibliography: "../habib-2017-snRNAseq.bib"
