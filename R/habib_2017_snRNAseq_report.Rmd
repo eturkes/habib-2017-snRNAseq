@@ -216,7 +216,7 @@ dim_red_plot(
 
 ### Original
 
-![](../assets/habib-fig2a.png)
+![](../assets/reference/habib-fig2a.png)
 
 ## Replication of Figure 2d {.tabset}
 
@@ -233,7 +233,7 @@ DoHeatmap(seurat_hvg, features = top$gene, size = 1.5) +
 
 ### Original
 
-![](../assets/habib-fig2d.png)
+![](../assets/reference/habib-fig2d.png)
 
 ## Replication of Figure 2b {.tabset}
 
@@ -267,7 +267,7 @@ FeaturePlot(
 
 ### Original
 
-![](../assets/habib-fig2b.png)
+![](../assets/reference/habib-fig2b.png)
 
 # ~~~ Breakdown of Methods ~~~ {-}
 
@@ -345,7 +345,7 @@ datatable(counts[1:5, 1:3])
 # Therefore we use Supplementary Table 7 (nmeth.4407-S10.xlsx), which does not have those issues.
 # However, because cluster 11 is incorrectly named in this table, we must correct that.
 # Also, as this file contained non-standard formatting, minimal manual editing was done for use in R.
-clust <- fread(file.path(assets_dir, "nmeth.4407-S10-edited.txt"), data.table = FALSE)
+clust <- fread(file.path(assets_dir, "reference", "nmeth.4407-S10-edited.txt"), data.table = FALSE)
 datatable(clust[1:5, ])
 ```
 
@@ -505,7 +505,7 @@ Furthermore, we assess the proportion of ribosomal/mitochrondrial gene expressio
 While mitochrondrial genes are straightforward to extract from their HGNC gene symbol, an annotation set for ribosomal genes had to first be downloaded from HGNC, where they are then loaded from the `assets` directory.
 
 ```{r}
-ribo_genes <- read.table(file.path(assets_dir, "ribo-genes.txt"), sep = "\t", header = TRUE)
+ribo_genes <- read.table(file.path(assets_dir, "qc", "ribo-genes.txt"), sep = "\t", header = TRUE)
 is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.Symbol)
 sce <- calculateQCMetrics(sce, feature_controls = list(mito = is_mito, ribo = is_ribo))
@@ -1171,7 +1171,7 @@ dim_red_plot(
 
 ### Original
 
-![](../assets/habib-fig2a.png)
+![](../assets/reference/habib-fig2a.png)
 
 # Differential Expresssion
 
@@ -1203,7 +1203,7 @@ DoHeatmap(seurat_hvg, features = top$gene, size = 1.5) +
 
 **Original**
 
-![](../assets/habib-fig2d.png)
+![](../assets/reference/habib-fig2d.png)
 
 ## Marker Genes {.tabset}
 
@@ -1238,7 +1238,7 @@ FeaturePlot(
 
 ### Original
 
-![](../assets/habib-fig2b.png)
+![](../assets/reference/habib-fig2b.png)
 
 # References
 
