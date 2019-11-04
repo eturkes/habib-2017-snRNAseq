@@ -159,7 +159,7 @@ label_df2 <- gg_df %>%
   left_join(label_df)
 
 dim_red_plot(
-  data = gg_df, x = "habib_tsne1", y = "habib_tsne2",col = "habib_cluster_name", type = "cat") +
+  data = gg_df, x = "habib_tsne1", y = "habib_tsne2", col = "habib_cluster_name", type = "cat") +
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters Habib tSNE")
 ```
 
@@ -185,9 +185,6 @@ dim_red_plot(
 
 ```{r, echo = FALSE, message = FALSE}
 # Setup for automatic placement of cluster labels.
-label_df <- data.frame(
-  seurat_hvg_clusters_name = levels(gg_df$seurat_hvg_clusters_name),
-  label = levels(gg_df$seurat_hvg_clusters_name))
 label_df2 <- gg_df %>%
   group_by(seurat_hvg_clusters_name) %>%
   summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
@@ -240,7 +237,8 @@ DoHeatmap(seurat_hvg, features = top$gene, size = 1.5) +
 We successfully replicate the overlay of 6 select marker genes over tSNEs from @habib_massively_2017 and from this analysis.
 
 ```{r, echo = FALSE, message = FALSE}
-seurat <- as.Seurat(sce, counts = "counts", data = NULL) # Missing genes when using sce_hvg.
+# Use full gene list in case some were lost during HVG step.
+seurat <- as.Seurat(sce)
 habib_tsne <- as.matrix(data.frame(sce$habib_tsne1, sce$habib_tsne2))
 colnames(habib_tsne) <- paste0("HabibTSNE_", 1:2)
 rownames(habib_tsne) <- colnames(sce)
@@ -277,7 +275,6 @@ We start by setting some global variables and loading in any required packages.
 
 ```{r}
 data_str <- "GTEx_droncseq_hip_pcf"
-source_str <- "habib"
 data_dir <- file.path(getwd(), "..", "data")
 assets_dir <- file.path(getwd(), "..", "assets")
 results_dir <- file.path(getwd(), "..", "results")
@@ -315,6 +312,16 @@ dim_red_plot <- function(data, x, y, col, type) {
           legend.title = element_blank()) +
         scale_colour_viridis()}
   gg}
+
+# Adds download buttons and horizontal scrolling.
+datatable_custom <- function(dt) {
+  datatable(
+    dt, extensions = "Buttons",
+    options = list(
+      scrollX = TRUE, dom = "Blfrtip",
+      buttons = list(
+        "copy", "print",
+        list(extend = "collection", buttons = c("csv", "excel", "pdf"), text = "Download"))))}
 ```
 
 # Original Data {.tabset}
@@ -345,7 +352,7 @@ datatable(counts[1:5, 1:3])
 # Specifically in clusters 15-18, which do not match those in the original publication.
 # Therefore we use Supplementary Table 7 (nmeth.4407-S10.xlsx), which does not have those issues.
 # However, because cluster 11 is incorrectly named in this table, we must correct that.
-# Also, as this file contained non-standard formatting, minimal manual editing was done for use in R.
+# Also, as this file contained non-standard formatting, some manual editing was done for use in R.
 clust <- fread(file.path(assets_dir, "reference", "nmeth.4407-S10-edited.txt"), data.table = FALSE)
 datatable(clust[1:5, ])
 ```
@@ -461,7 +468,7 @@ keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
 sce <- sce[keep_genes, ]
 
 rowData(sce) <- gene_anno
-names(rowData(sce))[names(rowData(sce)) == "strand"] <- "strand_n" # Conflicts with other packages.
+names(rowData(sce))[names(rowData(sce)) == "strand"] <- "strand_n" # Avoids package conflictions.
 rm(gene_anno, gene_anno2)
 names(rowData(sce))
 ```
@@ -501,8 +508,7 @@ plot(
 ## Low Quality Nuclei
 
 As we already have the number of nuclei used in @habib_massively_2017, we remove no further and only generate metrics to assess the effects of additional QC.
-We start by investigating low library and feature sizes, as it is unclear whether the data was filtered on that basis.
-Furthermore, we assess the proportion of ribosomal/mitochrondrial gene expression in nuclei, which has little to no mention in the publication.
+We start by investigating low library and feature sizes, as well ribosomal/mitochondrial gene expression, as these were measured in the publication but it is unclear whether the data was filtered on that basis.
 Mitochondrial genes can be extracted simply by their prefix, while an annotation set was downloaded from HUGO for ribosomal genes.
 
 ```{r}
@@ -511,7 +517,6 @@ is_mito <- which(rowData(sce)$chromosome_name == "MT")
 is_ribo <- which(rowData(sce)$external_gene_name %in% ribo_genes$Approved.symbol)
 sce <- calculateQCMetrics(sce, feature_controls = list(mito = is_mito, ribo = is_ribo))
 rm(ribo_genes, bc_rank)
-
 par(mfrow = c(2, 2), mar = c(5, 4, 1, 1), bty = "n")
 hist(
   sce$total_counts, xlab = "log10(Library Sizes)", main = "",
@@ -633,23 +638,24 @@ if (file.exists(rds)) {
   quickCluster <- readRDS(rds)
 } else {
   set.seed(1)
-  quickCluster <- quickCluster(sce, use.ranks = FALSE, BSPARAM = IrlbaParam())
+  quickCluster <- quickCluster(sce, use.ranks = FALSE, BPPARAM = MulticoreParam())
   saveRDS(quickCluster, rds)}
 ```
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "size_factors.rds")
+rds <- file.path(assets_dir, "cache", "computeSumFactors.rds")
 if (file.exists(rds)) {
-  size_factors <- readRDS(rds)
+  computeSumFactors <- readRDS(rds)
 } else {
-  size_factors <- computeSumFactors(sce, cluster = quickCluster, min.mean = 0.1)
-  saveRDS(size_factors, rds)}
+  computeSumFactors <- computeSumFactors(
+    sce, cluster = quickCluster, min.mean = 0.1, BPPARAM = MulticoreParam())
+  saveRDS(computeSumFactors, rds)}
 ```
 
 In an experiment where most systematic differences between nuclei are driven by capture efficiency and sequencing depth, we should see a correlation between size factors and library size.
 
 ```{r, fig.height = 6}
-sce <- size_factors
+sce <- computeSumFactors
 par(mfrow = c(1, 2), mar = c(5, 4, 2, 1), bty = "n")
 smoothScatter(
   sce$total_counts, sizeFactors(sce), log = "xy", xlab = "Total Counts", ylab = "Size Factors")
@@ -667,11 +673,15 @@ sce <- normalize(sce)
 sce
 ```
 
-# Dimensionality Reduction
+## Batch Effects
 
-Before creating our own clusters, we explore the data using various dimensionality reduction techniques.
-We start by plotting the coordinates provided in @habib_massively_2017, which were generated off of select PCs after subsetting to the most highly variable genes.
-The cluster labeled plot is identical to Figure 2a from the paper, aside from the additional "Unlabeled" cells.
+The authors write:
+
+>  To rule out the possibility that the resulting clusters are driven by batch or other technical effects, we examined the distribution of samples within each cluster and the distribution of the number of genes detected across clusters (as a measure of nuclei quality).
+Overall, the nuclei separated into distinct point clouds in tSNE space that were not driven by batch; each cluster or cloud was an admixture of cells from all technical and biological replicates, with variable numbers of genes.
+Related to the number of genes, we note that there is a distinct biological difference in cell size (and expected RNA content) between neuronal and glial cells in the brain.
+
+To assess these qualities we use the tSNE coordinates and color each point by the batch they were derived and by their total features.
 
 ```{r}
 # Set up data frame for ggplot2.
@@ -704,91 +714,12 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) Habib tSNE")
 ```
 
-## PCA
+Although the dataset is not perfectly homogeneous, we continue forward as no correction was applied in the papers, noting that this may be valuable to do for re-analysis.
+We also see that the cluster labeled plot is identical to Figure 2a from the paper, aside from the additional "Unlabeled" cells.
 
-Our attempt at replication begins with the PCA function described in @habib_massively_2017:
+# Dimensionality Reduction
 
-> We used the fast ‘rpca’ function in R (package ‘rsvd’)...
-
-```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "rpca.rds")
-if (file.exists(rds)) {
-  pca <- readRDS(rds)
-} else {
-  set.seed(1)
-  pca <- rpca(scale(t(as.matrix(logcounts(sce)))), k = 50)
-  saveRDS(pca, rds)}
-```
-
-```{r}
-reducedDims(sce) <- SimpleList(PCA = pca$x)
-plotPCA(sce, ncomponents = 4, colour_by = "habib_cluster_name") +
-  ggtitle("Habib Clusters PCA") + theme(legend.title = element_blank())
-```
-
-@habib_massively_2017 describes the way PC selection was performed, but we do not know the exact number retained:
-
-> [We] chose the most significant principal components (or PCs) based on the largest eigen value gap...
-
-Using a scree plot, we identify a reasonable eiganvalue gap and include all PCs just before the gap for downstream analysis.
-
-```{r}
-retain_pcs <- 21
-retain_pcs
-par(mfrow = c(1, 1))
-plot(
-  log10(pca$sdev), xlab = "PC", ylab = "log10(Proportion of Variance Explained)",
-  pch = 20, cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
-abline(v = retain_pcs, lty = 2, col = "red")
-```
-
-## tSNE
-
-@habib_massively_2017 states having used:
-
-> the ‘Rtsne’ package, with a maximum of 2,000 iterations, disabling the initial PCA step and setting the perplexity parameter to 100 for detection of the major clusters...
-
-We use the same method, except setting the perplexity to 50, as 100 is unconventionally high and furthermore did not agree as well with the paper figure.
-
-```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "Rtsne.rds")
-if (file.exists(rds)) {
-  tsne <- readRDS(rds)
-} else {
-  set.seed(1)
-  tsne <- Rtsne(pca$x[ , 1:retain_pcs], pca = FALSE, perplexity = 50, max_iter = 2000)
-  saveRDS(tsne, rds)}
-```
-
-```{r}
-reducedDims(sce) <- SimpleList(PCA = pca$x, TSNE = tsne$Y)
-add_df <- data.frame(reducedDim(sce, "TSNE"))
-names(add_df) <- paste0("allgenes_tsne", seq(ncol(add_df)))
-colData(sce) <- cbind(
-  colData(sce), allgenes_tsne1 = add_df$allgenes_tsne1, allgenes_tsne2 = add_df$allgenes_tsne2)
-gg_df <- data.frame(gg_df, add_df)
-
-# Setup for automatic placement of cluster labels.
-label_df2 <- gg_df %>%
-  group_by(habib_cluster_name) %>%
-  summarize(allgenes_tsne1 = median(allgenes_tsne1), allgenes_tsne2 = median(allgenes_tsne2)) %>%
-  left_join(label_df)
-
-dim_red_plot(
-  data = gg_df, x = "allgenes_tsne1", y = "allgenes_tsne2",
-  col = "habib_cluster_name", type = "cat") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Habib Clusters All Genes tSNE")
-dim_red_plot(
-  data = gg_df, x = "allgenes_tsne1", y = "allgenes_tsne2", col = "cell_id_stem", type = "other") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("Sample Distribution All Genes tSNE")
-dim_red_plot(
-  data = gg_df, x = "allgenes_tsne1", y = "allgenes_tsne2",
-  col = "log10_total_features_by_counts", type = "cont") +
-  xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) All Genes tSNE")
-```
-
-We see that our tSNE is able to resolve the clusters in @habib_massively_2017, though some resolution is lost in the relationship between clusters and within subclusters.
-All genes were used for the sake of exploration, but now we reduce our dataset to the top HVGs, as was done in the paper.
+In generating their tSNE coordinates, as well as clusters, the authors used select principal components after subsetting to the most highly variable genes.
 
 ## HVG
 
@@ -799,15 +730,23 @@ Describing the selection of HVGs, @habib_massively_2017 states:
 We carry out a similar procedure using the workflow suggested by the `scran` package and then perform dimensionality reduction as described earlier.
 As there are no spike-in transcripts, we first model technical noise as Poisson and create a fitted trend on that basis.
 
+```{r, cache = TRUE}
+rds <- file.path(assets_dir, "cache", "makeTechTrend.rds")
+if (file.exists(rds)) {
+  makeTechTrend <- readRDS(rds)
+} else {
+  makeTechTrend <- makeTechTrend(x = sce, MulticoreParam())
+  saveRDS(makeTechTrend, rds)}
+```
+
 ```{r}
-new_trend <- makeTechTrend(x = sce)
 fit <- trendVar(sce, use.spikes = FALSE, loess.args = list(span = 0.05))
 par(mfrow = c(1, 1), mar = c(5, 4, 2, 1), bty = "n")
 plot(
   fit$mean, fit$var, pch = 20,
   col = rgb(0.1, 0.2, 0.7, 0.6), xlab = "Mean Log-expression", ylab = "Variance")
 curve(fit$trend(x), col = "orange", lwd = 2, add = TRUE)
-curve(new_trend(x), col = "red", lwd = 2, add = TRUE)
+curve(makeTechTrend(x), col = "red", lwd = 2, add = TRUE)
 legend(
   "top", legend = c("Poisson Noise", "Observed Trend"), lty = 1,
   lwd = 2, col = c("red", "orange"), bty = "n")
@@ -817,13 +756,14 @@ The plot shows a large discrepancy between the two trends, which we assume is co
 We extract the genes with the largest biological components and plot them here.
 
 ```{r}
-fit$trend <- new_trend
+fit$trend <- makeTechTrend
 dec <- decomposeVar(fit = fit)
 top_dec <- rownames(dec[order(dec$bio, decreasing = TRUE), ])[1:10]
 rm(fit)
 plotExpression(sce, features = top_dec) +
   stat_summary(
-    fun.y = median, fun.ymin = median, fun.ymax = median, geom = "crossbar", width = 0.3, alpha = 0.8)
+    fun.y = median, fun.ymin = median, fun.ymax = median,
+    geom = "crossbar", width = 0.3, alpha = 0.8)
 ```
 
 HVG selection is typically in the range of 1,000 to 5,000 [@luecken_current_2019], but @habib_massively_2017 does not state the number of HVGs selected.
@@ -848,6 +788,7 @@ Let's see what number of genes we would subset to with these thresholds.
 ```{r}
 keep <- which(dec$FDR < fdr_median & dec$bio >= bio_median)
 sce_hvg <- sce[keep, ]
+metadata(sce) <- list(hvg = rownames(sce_hvg))
 rm(dec)
 dim(sce_hvg)[1]
 ```
@@ -864,30 +805,35 @@ rds <- file.path(assets_dir, "cache", "hvg_quickCluster.rds")
 if (file.exists(rds)) {
   quickCluster <- readRDS(rds)
 } else {
-  set.seed(1)
-  quickCluster <- quickCluster(sce_hvg, use.ranks = FALSE, BSPARAM = IrlbaParam())
+  quickCluster <- quickCluster(sce_hvg, use.ranks = FALSE, BPPARAM = MulticoreParam())
   saveRDS(quickCluster, rds)}
 ```
 
 ```{r, cache = TRUE}
-rds <- file.path(assets_dir, "cache", "hvg_size_factors.rds")
+rds <- file.path(assets_dir, "cache", "hvg_computeSumFactors.rds")
 if (file.exists(rds)) {
-  size_factors <- readRDS(rds)
+  computeSumFactors <- readRDS(rds)
 } else {
-  size_factors <- computeSumFactors(sce_hvg, cluster = quickCluster, min.mean = 0.1)
-  saveRDS(size_factors, rds)}
+  computeSumFactors <- computeSumFactors(
+    sce_hvg, cluster = quickCluster, min.mean = 0.1, BPPARAM = MulticoreParam())
+  saveRDS(computeSumFactors, rds)}
 ```
 
 ```{r}
-sce_hvg <- size_factors
+sce_hvg <- computeSumFactors
 sce_hvg <- normalize(sce_hvg)
-rm(size_factors)
+rm(computeSumFactors)
 sce_hvg
 ```
 
 The remaining dimensionality reduction sections will use this newly obtained SCE object.
 
-### PCA
+## PCA
+
+We perform PCA in the manner described in @habib_massively_2017:
+
+> We used a DGE matrix consisting only of variable genes as defined above, scaled and log transformed, and then reduced its dimensions with PCA.
+We used the fast ‘rpca’ function in R (package ‘rsvd’)...
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "hvg_rpca.rds")
@@ -903,19 +849,33 @@ if (file.exists(rds)) {
 reducedDims(sce_hvg) <- SimpleList(PCA = pca$x)
 plotPCA(sce_hvg, ncomponents = 4, colour_by = "habib_cluster_name") +
   ggtitle("Habib Clusters HVG PCA") + theme(legend.title = element_blank())
+plotPCA(sce_hvg, ncomponents = 4, colour_by = "cell_id_stem") +
+  ggtitle("Sample Distribution HVG PCA") + theme(legend.title = element_blank())
+plotPCA(sce_hvg, ncomponents = 4, colour_by = "log10_total_features_by_counts") +
+  ggtitle("log10(Total Features) HVG PCA") + theme(legend.title = element_blank())
 ```
+
+@habib_massively_2017 describes the way PC selection was performed, but we do not know the exact number retained:
+
+> [We] chose the most significant principal components (or PCs) based on the largest eigen value gap...
+
+Taking the explanation literally, the using largest eigen value gap would retain very few PCs, as can be seen on the below scree plot.
+Instead, we choose a cutoff point just past the elbow where eigen values begin to stabilize.
 
 ```{r}
 retain_pcs <- 22
 retain_pcs
-par(mfrow = c(1, 1))
-plot(
-  log10(pca$sdev), xlab = "PC", ylab = "log10(Proportion of Variance Explained)",
-  pch = 20, cex = 0.6, col = rgb(0.8, 0.2, 0.2, 0.5))
-abline(v = retain_pcs, lty = 2, col = "red")
+ggscreeplot(pca, type = "eigenvals") +
+  geom_line(linetype = "solid") +
+  geom_vline(xintercept = retain_pcs, color = "#EF3B2C", linetype = "dashed")
+datatable_custom(summary(pca))
 ```
 
-### tSNE
+## tSNE
+
+@habib_massively_2017 states having used:
+
+> the ‘Rtsne’ package, with a maximum of 2,000 iterations, disabling the initial PCA step and setting the perplexity parameter to 100 for detection of the major clusters...
 
 ```{r, cache = TRUE}
 rds <- file.path(assets_dir, "cache", "hvg_Rtsne.rds")
@@ -923,20 +883,13 @@ if (file.exists(rds)) {
   tsne <- readRDS(rds)
 } else {
   set.seed(1)
-  tsne <- Rtsne(pca$x[ , 1:retain_pcs], pca = FALSE, perplexity = 50, max_iter = 2000)
+  tsne <- Rtsne(pca$x[ , 1:retain_pcs], pca = FALSE, perplexity = 100, max_iter = 2000)
   saveRDS(tsne, rds)}
 ```
 
 ```{r}
-# Set up data frame for ggplot2.
-gg_df <- data.frame(
-  colData(sce)[ , c(
-    "cell_id_stem", paste0("habib_tsne", 1:2),
-    "log10_total_features_by_counts", "habib_cluster_name")])
-rownames(gg_df) <- NULL
-gg_df$habib_cluster_name <- factor(gg_df$habib_cluster_name)
-
 reducedDims(sce_hvg) <- SimpleList(PCA = pca$x, TSNE = tsne$Y)
+reducedDims(sce) <- SimpleList(PCA = pca$x, TSNE = tsne$Y)
 add_df <- data.frame(reducedDim(sce_hvg, "TSNE"))
 names(add_df) <- paste0("hvg_tsne", seq(ncol(add_df)))
 colData(sce_hvg) <- cbind(
@@ -964,9 +917,6 @@ dim_red_plot(
   xlab("tSNE 1") + ylab("tSNE 2") + ggtitle("log10(Total Features) HVG tSNE")
 ```
 
-Interestingly, the resulting tSNE is less tightly clustered and appears to capture heterogeneous populations more similarily to @habib_massively_2017 than the tSNE from earlier.
-As the authors suggest that they used HVG tSNEs for all downstream visualizations, we do as well.
-
 # Clustering
 
 The previous sections utilized cluster labels provided in @habib_massively_2017, so now we will see if we can generate clusters that replicate them.
@@ -985,10 +935,10 @@ rds <- file.path(assets_dir, "cache", "seurat_hvg.rds")
 if (file.exists(rds)) {
   seurat_hvg <- readRDS(rds)
 } else {
-  seurat_hvg <- as.Seurat(sce_hvg, counts = "counts", data = NULL)
+  seurat_hvg <- as.Seurat(sce_hvg)
   seurat_hvg <- NormalizeData(seurat_hvg)
   seurat_hvg <- FindVariableFeatures(seurat_hvg, nfeatures = dim(sce_hvg)[1])
-  seurat_hvg <- ScaleData(seurat_hvg, features = rownames(seurat_hvg))
+  seurat_hvg <- ScaleData(seurat_hvg)
   seurat_hvg <- FindNeighbors(seurat_hvg, reduction = "PCA", dims = 1:retain_pcs)
   seurat_hvg <- FindClusters(seurat_hvg, resolution = 1.05)
   saveRDS(seurat_hvg, rds)}
@@ -1000,7 +950,8 @@ seurat_hvg
 
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_hvg_clusters = levels(gg_df$seurat_hvg_clusters), label = levels(gg_df$seurat_hvg_clusters))
+  seurat_hvg_clusters = levels(gg_df$seurat_hvg_clusters),
+  label = levels(gg_df$seurat_hvg_clusters))
 label_df2 <- gg_df %>%
   group_by(seurat_hvg_clusters) %>%
   summarize(habib_tsne1 = median(habib_tsne1), habib_tsne2 = median(habib_tsne2)) %>%
@@ -1036,7 +987,8 @@ While this finding is not fully represented by the tSNE coordinates from @habib_
 ```{r}
 # Setup for automatic placement of cluster labels.
 label_df <- data.frame(
-  seurat_hvg_clusters = levels(gg_df$seurat_hvg_clusters), label = levels(gg_df$seurat_hvg_clusters))
+  seurat_hvg_clusters = levels(gg_df$seurat_hvg_clusters),
+  label = levels(gg_df$seurat_hvg_clusters))
 label_df2 <- gg_df %>%
   group_by(seurat_hvg_clusters) %>%
   summarize(hvg_tsne1 = median(hvg_tsne1), hvg_tsne2 = median(hvg_tsne2)) %>%
@@ -1211,7 +1163,8 @@ DoHeatmap(seurat_hvg, features = top$gene, size = 1.5) +
 We probe 6 select marker genes to replicate Figure 2b.
 
 ```{r}
-seurat <- as.Seurat(sce, counts = "counts", data = NULL) # Missing genes when using sce_hvg.
+# Use full gene list in case some were lost during HVG step.
+seurat <- as.Seurat(sce)
 habib_tsne <- as.matrix(data.frame(sce$habib_tsne1, sce$habib_tsne2))
 colnames(habib_tsne) <- paste0("HabibTSNE_", 1:2)
 rownames(habib_tsne) <- colnames(sce)
@@ -1229,7 +1182,7 @@ FeaturePlot(
   cols = c("lightgrey", "red"), max.cutoff = 20, ncol = 2)
 ```
 
-### All Genes tSNE
+### HVG tSNE
 
 ```{r}
 FeaturePlot(
