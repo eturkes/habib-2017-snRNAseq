@@ -413,10 +413,12 @@ datatable(tsne[1:5, ])
 ## SingleCellExperiment
 
 The data is now sufficiently prepared to form an SCE object.
+We also set aside an unprocessed copy of the object to be saved for later.
 
 ```{r}
 col_dat <- cbind(col_dat, clust[ , names(clust) != "sample"], tsne[ , names(tsne) != "sample"])
 sce <- SingleCellExperiment(assays = list(counts = counts), colData = col_dat)
+sce_orig <- sce
 rm(counts, clust, tsne, col_dat)
 sce
 ```
@@ -591,10 +593,8 @@ plot(
 ```
 
 Therefore, we remove genes in the manner specified in @habib_massively_2017.
-As this step is destructive, we first set aside a copy of our SCE object thus far to be saved later.
 
 ```{r}
-sce_orig <- sce
 detected_genes <- rowSums(counts(sce) >= 2)
 sce <- sce[which(detected_genes >= 10), ]
 head(rowData(sce)$n_cells_by_counts[order(rowData(sce)$n_cells_by_counts)])
