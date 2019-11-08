@@ -429,8 +429,8 @@ In order to use standard gene symbols, which are often useful for downstream ana
 
 ```{r}
 attributes <- c(
-  "hgnc_symbol", "ensembl_gene_id", "external_gene_name", "chromosome_name", "start_position",
-  "end_position", "strand", "description", "percentage_gene_gc_content", "gene_biotype")
+  "external_gene_name", "ensembl_gene_id", "entrezgene_id",
+  "hgnc_symbol", "description", "chromosome_name")
 ```
 
 ```{r, cache = TRUE}
@@ -470,7 +470,6 @@ keep_genes <- match(gene_anno$external_gene_name, rownames(sce))
 sce <- sce[keep_genes, ]
 
 rowData(sce) <- gene_anno
-names(rowData(sce))[names(rowData(sce)) == "strand"] <- "strand_n" # Avoids package conflictions.
 rm(gene_anno, gene_anno2)
 names(rowData(sce))
 ```
@@ -940,7 +939,7 @@ if (file.exists(rds)) {
   seurat_hvg <- FindVariableFeatures(seurat_hvg, nfeatures = dim(sce_hvg)[1])
   seurat_hvg <- ScaleData(seurat_hvg)
   seurat_hvg <- FindNeighbors(seurat_hvg, reduction = "PCA", dims = 1:retain_pcs)
-  seurat_hvg <- FindClusters(seurat_hvg, resolution = 1.05)
+  seurat_hvg <- FindClusters(seurat_hvg, resolution = 0.95)
   saveRDS(seurat_hvg, rds)}
 ```
 
@@ -1010,23 +1009,23 @@ gg_df$seurat_hvg_clusters_name <- NA
 seurat_hvg_clusters <- as.integer(gg_df$seurat_hvg_clusters)
 for (i in 1:length(seurat_hvg_clusters)) {
   if (seurat_hvg_clusters[i] == 1) {
-    gg_df[i, ncol(gg_df)] <- "ODC"
+    gg_df[i, ncol(gg_df)] <- "exPFC1"
   } else if (seurat_hvg_clusters[i] == 2) {
-    gg_df[i, ncol(gg_df)] <- "exPFC1.1"
+    gg_df[i, ncol(gg_df)] <- "ODC2"
   } else if (seurat_hvg_clusters[i] == 3) {
-    gg_df[i, ncol(gg_df)] <- "ASC1"
+    gg_df[i, ncol(gg_df)] <- "ASC"
   } else if (seurat_hvg_clusters[i] == 4) {
     gg_df[i, ncol(gg_df)] <- "exDG"
   } else if (seurat_hvg_clusters[i] == 5) {
-    gg_df[i, ncol(gg_df)] <- "exPFC1.2"
+    gg_df[i, ncol(gg_df)] <- "exCA"
   } else if (seurat_hvg_clusters[i] == 6) {
-    gg_df[i, ncol(gg_df)] <- "exCA3"
-  } else if (seurat_hvg_clusters[i] == 7) {
     gg_df[i, ncol(gg_df)] <- "GABA1"
-  } else if (seurat_hvg_clusters[i] == 8) {
+  } else if (seurat_hvg_clusters[i] == 7) {
     gg_df[i, ncol(gg_df)] <- "GABA2"
-  } else if (seurat_hvg_clusters[i] == 9) {
+  } else if (seurat_hvg_clusters[i] == 8) {
     gg_df[i, ncol(gg_df)] <- "OPC"
+  } else if (seurat_hvg_clusters[i] == 9) {
+    gg_df[i, ncol(gg_df)] <- "ODC1"
   } else if (seurat_hvg_clusters[i] == 10) {
     gg_df[i, ncol(gg_df)] <- "MG"
   } else if (seurat_hvg_clusters[i] == 11) {
@@ -1036,13 +1035,13 @@ for (i in 1:length(seurat_hvg_clusters)) {
   } else if (seurat_hvg_clusters[i] == 13) {
     gg_df[i, ncol(gg_df)] <- "NSC"
   } else if (seurat_hvg_clusters[i] == 14) {
-    gg_df[i, ncol(gg_df)] <- "ASC2"
+    gg_df[i, ncol(gg_df)] <- "New1"
   } else if (seurat_hvg_clusters[i] == 15) {
     gg_df[i, ncol(gg_df)] <- "Unlabeled2.1"
   } else if (seurat_hvg_clusters[i] == 16) {
-    gg_df[i, ncol(gg_df)] <- "exPFC2"
+    gg_df[i, ncol(gg_df)] <- "New2"
   } else if (seurat_hvg_clusters[i] == 17) {
-    gg_df[i, ncol(gg_df)] <- "exCA1"
+    gg_df[i, ncol(gg_df)] <- "exPFC2"
   } else if (seurat_hvg_clusters[i] == 18) {
     gg_df[i, ncol(gg_df)] <- "Unlabeled2.2"}}
 
